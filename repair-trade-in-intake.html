@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>R&amp;E Intake — Repair / Trade-in Request</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --ink:#1c2b2a;
+    --paper:#f6f4ee;
+    --panel:#ffffff;
+    --line:#d9d3c4;
+    --steel:#3d5a56;
+    --steel-dark:#25403c;
+    --rust:#b5502f;
+    --amber:#c9a227;
+    --ok:#3d6b4f;
+    --err:#a63b2c;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @font-face{
+    font-family:'IBM Plex Sans';
+    src:local('Arial');
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.5;
+    padding:32px 20px 80px;
+  }
+  .wrap{max-width:880px;margin:0 auto;}
+
+  header.page{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:3px solid var(--ink);
+    padding-bottom:16px;
+    margin-bottom:28px;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  header.page .tag{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--steel);
+    margin:0 0 6px;
+  }
+  header.page h1{
+    margin:0;
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+  header.page .stamp{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--rust);
+    border:1px solid var(--rust);
+    padding:4px 10px;
+    border-radius:2px;
+    white-space:nowrap;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:22px 24px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:var(--steel-dark);
+    margin:0 0 14px;
+    font-family:var(--mono);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel h2 .n{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:20px;height:20px;
+    border-radius:50%;
+    background:var(--steel);
+    color:#fff;
+    font-size:11px;
+  }
+
+  /* --- Dropzone --- */
+  #dropzone{
+    border:2px dashed var(--line);
+    border-radius:6px;
+    padding:36px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  #dropzone.drag{
+    border-color:var(--steel);
+    background:#eef1ee;
+  }
+  #dropzone .icon{
+    width:40px;height:40px;
+    margin:0 auto 12px;
+    stroke:var(--steel);
+  }
+  #dropzone p{margin:4px 0;color:#556;}
+  #dropzone .fname{
+    font-family:var(--mono);
+    color:var(--steel-dark);
+    font-weight:600;
+  }
+  input[type=file]{display:none;}
+
+  .status-line{
+    font-family:var(--mono);
+    font-size:12px;
+    margin-top:10px;
+    min-height:16px;
+  }
+  .status-line.ok{color:var(--ok);}
+  .status-line.err{color:var(--err);}
+  .status-line.busy{color:var(--steel);}
+
+  /* --- Form grid --- */
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px 18px;
+  }
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.span2{grid-column:1 / -1;}
+  .field label{
+    font-family:var(--mono);
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--steel-dark);
+    display:flex;
+    justify-content:space-between;
+  }
+  .field label .col-letter{
+    color:var(--rust);
+    font-weight:700;
+  }
+  .field input, .field textarea, .field select{
+    font-family:var(--sans);
+    font-size:14px;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:#fffdfa;
+    color:var(--ink);
+  }
+  .field textarea{resize:vertical;min-height:44px;font-family:var(--mono);font-size:12.5px;}
+  .field input:focus, .field textarea:focus, .field select:focus{
+    outline:none;
+    border-color:var(--steel);
+    box-shadow:0 0 0 3px rgba(61,90,86,.12);
+  }
+  .field.auto input, .field.auto textarea{
+    background:#f3faf5;
+    border-color:#bcd8c4;
+  }
+  .hint{font-size:11px;color:#8a8578;margin-top:2px;}
+
+  /* --- Config panel --- */
+  .config-grid{display:grid;grid-template-columns:1fr;gap:14px;}
+  .config-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  details.config summary{
+    cursor:pointer;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--steel);
+    list-style:none;
+  }
+  details.config summary::-webkit-details-marker{display:none;}
+  details.config summary::before{content:'▸ ';}
+  details.config[open] summary::before{content:'▾ ';}
+  details.config .config-body{margin-top:14px;}
+
+  .row-target{
+    font-family:var(--mono);
+    font-size:12px;
+    background:#fff8e8;
+    border:1px solid var(--amber);
+    border-radius:4px;
+    padding:8px 12px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  button{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:14px;
+    border:none;
+    border-radius:5px;
+    padding:12px 22px;
+    cursor:pointer;
+    transition:background .15s, transform .05s;
+  }
+  button:active{transform:translateY(1px);}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-primary{background:var(--steel-dark);color:#fff;}
+  .btn-primary:hover:not(:disabled){background:var(--steel);}
+  .btn-ghost{background:transparent;color:var(--steel-dark);border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--steel);}
+
+  .actions{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap;}
+
+  .result-banner{
+    margin-top:16px;
+    padding:12px 14px;
+    border-radius:5px;
+    font-family:var(--mono);
+    font-size:13px;
+    display:none;
+  }
+  .result-banner.show{display:block;}
+  .result-banner.ok{background:#eaf5ee;color:var(--ok);border:1px solid #bcd8c4;}
+  .result-banner.err{background:#fbeae7;color:var(--err);border:1px solid #e6b8ae;}
+
+  footer.note{
+    font-size:12px;
+    color:#8a8578;
+    margin-top:30px;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+
+  @media (max-width:600px){
+    .grid, .config-row{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <div>
+      <p class="tag">UMMI Surgical · R&amp;E Running Log</p>
+      <h1>Repair / Trade-in Intake</h1>
+    </div>
+    <div class="stamp" id="dateStamp"></div>
+  </header>
+
+  <!-- STEP 1: UPLOAD -->
+  <div class="panel">
+    <h2><span class="n">1</span> Upload the request PDF</h2>
+    <div id="dropzone">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14a2 2 0 0 0 2-2v-5"/><path d="M3 14v5a2 2 0 0 0 2 2h1"/></svg>
+      <p><span class="fname" id="fname">Drop a PDF here, or click to choose one</span></p>
+      <p style="font-size:12px;color:#9a9484;">Gmail "Repair / Trade-in Request" export, e.g. KKK/00809</p>
+    </div>
+    <input type="file" id="fileInput" accept="application/pdf" />
+    <div class="status-line" id="parseStatus"></div>
+  </div>
+
+  <!-- STEP 2: REVIEW -->
+  <div class="panel">
+    <h2><span class="n">2</span> Review before it hits the sheet</h2>
+    <p class="hint" style="margin-top:-8px;margin-bottom:14px;">
+      Fields shaded green were read from the PDF automatically — check them.
+      Everything else is guessed or left blank on purpose (short codes like
+      REQUEST BY / REGION BY aren't in the email). Blank fields are never
+      written over what's already in the sheet.
+    </p>
+
+    <div id="itemPicker" style="display:none;margin-bottom:16px;padding:12px 14px;background:#fff8e8;border:1px solid var(--amber);border-radius:5px;">
+      <p style="font-family:var(--mono);font-size:12px;color:var(--steel-dark);margin:0;">
+        This request has multiple items — combined into this one row.
+      </p>
+    </div>
+
+    <div class="grid" id="formGrid">
+      <div class="field auto" data-key="date">
+        <label>Date <span class="col-letter">B</span></label>
+        <input type="text" id="f_date" placeholder="DD.MM.YYYY" />
+      </div>
+      <div class="field auto" data-key="refNoDisplay">
+        <label>Ref. No <span class="col-letter">C</span></label>
+        <input type="text" id="f_refNo" placeholder="leave blank to keep sheet's existing number" />
+      </div>
+      <div class="field" data-key="requestBy">
+        <label>Request By <span class="col-letter">D</span></label>
+        <input type="text" id="f_requestBy" placeholder="auto-matched from staff list, or type a code" />
+      </div>
+
+      <div class="field" data-key="regionBy">
+        <label>Region By <span class="col-letter">E</span></label>
+        <input type="text" id="f_regionBy" placeholder="auto-matched from Responsibility, or type a code" />
+      </div>
+      <div class="field" data-key="type">
+        <label>Type <span class="col-letter">F</span></label>
+        <select id="f_type">
+          <option value="R">R — Repair</option>
+          <option value="R&E">R&E — Repair &amp; Exchange</option>
+          <option value="RCE">RCE — Repair Cost Estimation</option>
+          <option value="I">I — Inspection</option>
+          <option value="S">S — Item code suffix (S)</option>
+        </select>
+      </div>
+
+      <div class="field span2 auto" data-key="hospName">
+        <label>Hosp. Name <span class="col-letter">G</span></label>
+        <input type="text" id="f_hospName" />
+      </div>
+
+      <div class="field auto" data-key="itemCollected">
+        <label>Item Collected <span class="col-letter">H</span></label>
+        <textarea id="f_itemCollected" rows="1"></textarea>
+      </div>
+      <div class="field auto" data-key="itemSupply">
+        <label>Item Supply <span class="col-letter">I</span></label>
+        <textarea id="f_itemSupply" rows="1"></textarea>
+      </div>
+
+      <div class="field auto" data-key="serialNo">
+        <label>Serial No <span class="col-letter">J</span></label>
+        <textarea id="f_serialNo" rows="1" placeholder="split from Item Collect"></textarea>
+      </div>
+      <div class="field auto" data-key="serviceReportNo">
+        <label>Service Report No <span class="col-letter">K</span></label>
+        <textarea id="f_serviceReportNo" rows="1" placeholder="from attachment filename"></textarea>
+      </div>
+
+      <div class="field auto" data-key="logRef">
+        <label>Log. Ref (Technical Ref. No.) <span class="col-letter">L</span></label>
+        <input type="text" id="f_logRef" />
+      </div>
+      <div class="field auto" data-key="attn">
+        <label>Attn. <span class="col-letter">M</span></label>
+        <input type="text" id="f_attn" />
+      </div>
+
+      <div class="field auto" data-key="emailRefNo">
+        <label>Email Ref. No <span class="col-letter">N</span></label>
+        <input type="text" id="f_emailRefNo" />
+      </div>
+      <div class="field auto" data-key="sendBy">
+        <label>Send By <span class="col-letter">O</span></label>
+        <input type="text" id="f_sendBy" />
+      </div>
+
+      <div class="field span2" data-key="remarks">
+        <label>Remarks <span class="col-letter">P</span></label>
+        <textarea id="f_remarks"></textarea>
+      </div>
+
+      <div class="field" data-key="doneBy">
+        <label>Done By <span class="col-letter">Q</span></label>
+        <input type="text" id="f_doneBy" placeholder="filled once actioned" />
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: DESTINATION -->
+  <div class="panel">
+    <h2><span class="n">3</span> Send to the Google Sheet</h2>
+
+    <details class="config" id="configDetails">
+      <summary>Connection settings — set this up once</summary>
+      <div class="config-body">
+        <div class="config-grid">
+          <div class="field">
+            <label>Apps Script Web App URL</label>
+            <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/AKfycb.../exec" />
+            <p class="hint">From Extensions ▸ Apps Script ▸ Deploy ▸ Web app, in your Google Sheet. Deployment instructions are in the apps-script.gs file provided alongside this page.</p>
+          </div>
+          <div class="config-row">
+            <div class="field">
+              <label>Sheet tab name</label>
+              <input type="text" id="cfgSheet" value="2026" />
+            </div>
+            <div class="field">
+              <label>Start column</label>
+              <select id="cfgStartCol">
+                <option value="B" selected>B — Date onward (includes Date)</option>
+                <option value="C">C — Ref. No onward (skips Date)</option>
+                <option value="A">A — from the very first column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field span2" style="margin-top:4px;">
+            <label>Skip re-pasting the URL every time</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="bookmarkLink" readonly placeholder="Fill in the URL above, then click Generate" style="flex:1;font-family:var(--mono);font-size:12px;" />
+              <button type="button" class="btn-ghost" id="genBookmarkBtn" style="padding:9px 14px;white-space:nowrap;">Generate link</button>
+            </div>
+            <p class="hint">Generates a version of this page's link with your URL baked in. Bookmark it (or save it as a Chrome desktop shortcut) and open that instead of the plain file — it'll load with everything already filled in.</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <div style="margin-top:18px;">
+      <div class="row-target" id="previewBadge" style="display:none;"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="submitBtn" disabled>Add row to sheet</button>
+      <button class="btn-ghost" id="resetBtn" type="button">Clear form</button>
+    </div>
+
+    <div class="result-banner" id="resultBanner"></div>
+  </div>
+
+  <footer class="note">
+    Parsing runs entirely in your browser — the PDF never leaves your device except in the final row of data sent to your own Apps Script URL. Nothing is stored between visits, so re-paste the Web App URL if you reload the page.
+  </footer>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+document.getElementById('dateStamp').textContent = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+// Pre-fill the Apps Script URL / sheet tab from the page's own query
+// string, e.g. ?url=https://script.google.com/.../exec&sheet=2026
+// This lets you bookmark a version of this page with your details baked
+// in, so you don't have to re-paste the URL every time you open it.
+(function loadFromQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  const url = params.get('url');
+  const sheet = params.get('sheet');
+  if (url) document.getElementById('cfgUrl').value = url;
+  if (sheet) document.getElementById('cfgSheet').value = sheet;
+})();
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const fnameEl = document.getElementById('fname');
+const parseStatus = document.getElementById('parseStatus');
+const submitBtn = document.getElementById('submitBtn');
+const resultBanner = document.getElementById('resultBanner');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+const previewBadge = document.getElementById('previewBadge');
+
+async function updatePreviewBadge() {
+  const url = document.getElementById('cfgUrl').value.trim();
+  if (!url) {
+    previewBadge.style.display = 'none';
+    return;
+  }
+  const sheetName = document.getElementById('cfgSheet').value.trim() || '2026';
+  previewBadge.style.display = 'inline-flex';
+  previewBadge.textContent = 'Checking next row…';
+  try {
+    const res = await fetch(url + '?action=preview&sheetName=' + encodeURIComponent(sheetName));
+    const json = await res.json();
+    if (json.status === 'ok') {
+      previewBadge.textContent = `Next up → Row ${json.row}, Ref No ${json.refNo || '(blank)'}`;
+    } else {
+      previewBadge.textContent = 'Could not preview: ' + json.message;
+    }
+  } catch (err) {
+    previewBadge.textContent = 'Could not reach the Apps Script URL to preview.';
+  }
+}
+
+document.getElementById('cfgUrl').addEventListener('blur', updatePreviewBadge);
+document.getElementById('cfgSheet').addEventListener('blur', updatePreviewBadge);
+
+// If the URL/sheet arrived via query params (a bookmarked link), show the
+// preview badge right away instead of waiting for the field to be blurred.
+if (document.getElementById('cfgUrl').value.trim()) updatePreviewBadge();
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  document.querySelectorAll('#formGrid input, #formGrid textarea').forEach(el => { el.value = ''; el.title = ''; });
+  document.getElementById('f_type').selectedIndex = 0;
+  document.getElementById('f_requestBy').closest('.field').classList.remove('auto');
+  document.getElementById('f_regionBy').closest('.field').classList.remove('auto');
+  itemQueue = [];
+  itemQueueIndex = 0;
+  forcedNextRow = null;
+  document.getElementById('itemPicker').style.display = 'none';
+  fnameEl.textContent = 'Drop a PDF here, or click to choose one';
+  parseStatus.textContent = '';
+  parseStatus.className = 'status-line';
+  resultBanner.className = 'result-banner';
+  submitBtn.disabled = true;
+});
+
+async function handleFile(file) {
+  if (file.type !== 'application/pdf') {
+    parseStatus.textContent = 'That\'s not a PDF — please choose a PDF file.';
+    parseStatus.className = 'status-line err';
+    return;
+  }
+  fnameEl.textContent = file.name;
+  parseStatus.textContent = 'Reading PDF…';
+  parseStatus.className = 'status-line busy';
+  submitBtn.disabled = true;
+
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(it => it.str).join(' ');
+      fullText += pageText + '\n';
+    }
+    const fields = parseRequestText(fullText);
+    fillForm(fields);
+    parseStatus.textContent = 'Parsed — check the fields below, especially anything not shaded green.';
+    parseStatus.className = 'status-line ok';
+    submitBtn.disabled = false;
+  } catch (err) {
+    console.error(err);
+    parseStatus.textContent = 'Could not read that PDF (' + err.message + '). You can still fill the form in by hand.';
+    parseStatus.className = 'status-line err';
+    submitBtn.disabled = false;
+  }
+}
+
+// Staff code lookup — used to auto-resolve Request By / Region By from the
+// full names that appear in the email into the short codes your sheet uses.
+const STAFF_CODES = [
+  ['AP','Ainul Farha'], ['AT','Andy Teo'], ['CC','Lam Chee Cheong'],
+  ['CK','Chua Kok Hau'], ['CT','Christina Tan'], ['CV','Chua Vivian'],
+  ['EG','Andrew Lim'], ['GL','Ong Gek Lin'], ['HM','Hasliza Mahmud'],
+  ['IM','Khoo Kah Khim'], ['KK','Lim Ken Kong'], ['KL','Kee Pui Ling'],
+  ['KM','Khairulfitri Mohamed Hanapi'], ['KX','Tim Hoo'], ['KY','Kevin Lim Kien Yu'],
+  ['LK','Lim Kim Yee'], ['NT','May Teoh'], ['MU','Muhd Luqmanulhakim Ab Harith'],
+  ['MZ','Mohd Zulkaflie/ Fadzlie'], ['NY','Nicole Yeoh'], ['OC','Oshien Chiew Ying Fui'],
+  ['PY','Amanda Lee Pui Yin'], ['RA','Ravin Anthony Thomas'], ['RM','Richard Morogan'],
+  ['SC','Steven Chong'], ['SM','Sue May'], ['SY','Shu Yan'], ['TK','Wesley Tan'],
+  ['TZ','Ng Tze Khei'], ['UJ','Loh U-Jo'], ['WH','Lee Wei Heng'],
+  ['WY','Winnie Yeoh'], ['ZC','Wong Zhi Chuan'], ['CS','Chloe Choo Si Ying']
+];
+
+function lookupStaffCode(name) {
+  if (!name) return '';
+  const n = name.trim().toLowerCase();
+  if (!n) return '';
+  // Exact match first.
+  let hit = STAFF_CODES.find(([, full]) => full.toLowerCase() === n);
+  if (hit) return hit[0];
+  // Substring either direction — handles "Kah Khim" matching "Khoo Kah Khim".
+  hit = STAFF_CODES.find(([, full]) => full.toLowerCase().includes(n) || n.includes(full.toLowerCase()));
+  if (hit) return hit[0];
+  // Token match — every word in the parsed name appears in the full name.
+  const tokens = n.split(/\s+/).filter(Boolean);
+  hit = STAFF_CODES.find(([, full]) => tokens.every(t => full.toLowerCase().includes(t)));
+  return hit ? hit[0] : '';
+}
+
+function grab(text, re) {
+  const m = text.match(re);
+  return m ? m[1].replace(/\s+/g, ' ').trim() : '';
+}
+
+function toSheetDate(ddmmyyyy) {
+  // "21/08/2026" -> "21.08.2026"
+  const m = ddmmyyyy.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[1]}.${m[2]}.${m[3]}` : '';
+}
+
+function trimHospName(raw) {
+  // These are formatted "CODE - NAME - ADDRESS...", e.g.
+  // "B863 - BEACON HOSPITAL SDN. BHD. - No.1, Jalan 215, ...". Keeping the
+  // first two " - " segments drops the address reliably, including when the
+  // address itself starts with a company name rather than a street keyword.
+  const parts = raw.split(/\s+-\s+/);
+  if (parts.length >= 2) return `${parts[0].trim()} - ${parts[1].trim()}`;
+  return raw.trim();
+}
+
+function parseRequestText(text) {
+  const norm = text.replace(/\s+/g, ' ');
+
+  const emailRefNo = grab(norm, /(?:Repair|Trade-?in|Inspection)[^\.]*?Request\s+([A-Z]{2,6}\/\d{3,6})/i)
+                   || grab(norm, /([A-Z]{2,6}\/\d{4,6})\s+To:/i);
+
+  const requestDateRaw = grab(norm, /Request Date\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
+  const requestByName = grab(norm, /Request By\s*:\s*(.+?)\s+Request Division/i);
+  const responsibilityName = grab(norm, /Responsibility\s*:\s*(.+?)\s+Agent\s*:/i);
+  const requestByCode = lookupStaffCode(requestByName);
+  const regionByCode = lookupStaffCode(responsibilityName);
+  // Customer Name sometimes wraps to a second line in the source PDF, and
+  // the "Customer Name :" (and even "Cost Estimation Quotation :") labels
+  // can end up reordered or sitting mid-value as a result — a real layout
+  // quirk of how these get exported. Anchor to "Commission : X%" (which
+  // stays intact) and strip out whichever stray labels land inside.
+  const customerBlockRaw = grab(norm, /Commission\s*:\s*\d+%\s+(.+?)\s+Attention To/i);
+  const customerNameRaw = customerBlockRaw
+    .replace(/Cost Estimation\s*(?:No|Yes)?\s*Quotation\s*:\s*(?:No|Yes)?/i, '')
+    .replace(/Customer Name\s*:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  let attn = grab(norm, /Attention To\s*:\s*(.+?)\s+CC\.?\s*To/i);
+  if (!attn || attn === '-') {
+    // Some exports place the attention name *before* its label (the label
+    // and value end up on separate lines that flatten out of order), e.g.
+    // "... Malaysia  Sr Tuti Noraishah Hanim Zenol  Attention To :  CC. To : -  (OT)".
+    // Take the text right before the label, after the address ends.
+    const before = grab(norm, /([^,]{3,60}?)\s+Attention To\s*:/i);
+    if (before) attn = before.replace(/^.*\bMalaysia\b\s*/i, '').trim();
+    // The trailing parenthetical (department) can land after the CC line.
+    const trailingParen = grab(norm, /Attention To\s*:\s*CC\.?\s*To\s*:\s*-?\s*(\([^)]{1,30}\))/i);
+    if (attn && trailingParen) attn = `${attn} ${trailingParen}`;
+  }
+  const technicalRef = grab(norm, /Technical Ref\.?\s*No\.?\s*:\s*(.+?)\s+Processing Fee/i);
+  const remarks = grab(norm, /Remarks\s*:\s*(.+?)\s+Item\(s\) Requested/i);
+
+  // Service Report No comes from the attached PDF's filename, which is
+  // formatted like "R0790 - UKM Specialist Centre (11101RP2).pdf" or
+  // "I002 - ....pdf". Anchor the search to text after the signature
+  // ("Regards, ...") so an unrelated code earlier in the email (like a
+  // hospital code) doesn't get picked up instead.
+  const serviceReportNo = grab(norm, /Regards,.*?([A-Z]{1,3}\d{2,6})\s*-\s*.+?\.pdf/i)
+                        || grab(norm, /([A-Z]{1,3}\d{2,6})\s*-\s*[^-]+?\.pdf/i);
+
+  // Handles item tables that the PDF export scrambles — typically long ones,
+// where each row's description text gets interleaved with the next row's
+// marker, so rows can't be matched structurally. Instead of relying on row
+// layout, this keys off the collect codes (which carry a LOT:/SN: tag) and
+// rebuilds each row's supply code from evidence found elsewhere in the block.
+function parseScrambledItemRows(block, norm, fallbackServiceReport) {
+  if (!block) return [];
+
+  // Supply code for a given collect code: the PDF shows these split as
+  // "26775 UE(R)" (number, space, letters, suffix) or "33300(R)". Check
+  // which form actually appears in the block rather than assuming.
+  function supplyFor(num, letters) {
+    for (const suffix of ['(R)', '(S)']) {
+      if (letters && block.includes(letters + suffix)) return `${num} ${letters}${suffix}`;
+      if (block.includes(num + suffix)) return `${num}${suffix}`;
+    }
+    return `${num}${letters ? ' ' + letters : ''}`.trim();
+  }
+
+  const rows = [];
+  const claimedLots = new Set();
+
+  const collectPattern = /\b(\d{4,6})([A-Z]{0,3})\s+(?:LOT|SN)[:.]?\s*([A-Z0-9]+)/gi;
+  let m;
+  while ((m = collectPattern.exec(block)) !== null) {
+    const num = m[1], letters = (m[2] || '').toUpperCase(), lot = m[3].toUpperCase();
+    claimedLots.add(lot);
+    const supply = supplyFor(num, letters);
+    rows.push({
+      itemCollected: num + letters,
+      serialNo: lot,
+      itemSupply: supply,
+      type: detectItemType(supply) || detectItemType(block) || 'R',
+      serviceReportNo: findServiceReportForCode(norm, supply) || findServiceReportForCode(norm, num + letters) || fallbackServiceReport
+    });
+  }
+
+  if (rows.length < 2) return [];
+
+  // Supply-only rows: some entries have no collect code at all, appearing
+  // as "<row#> <number> <letters>" with no LOT/SN tag (e.g. "6 26176 LV").
+  const supplyOnlyPattern = /\b\d{1,2}\s+(\d{4,6})\s+([A-Z]{1,3})\b(?!\s*[:.])/g;
+  while ((m = supplyOnlyPattern.exec(block)) !== null) {
+    const letters = m[2].toUpperCase();
+    if (letters === 'LOT' || letters === 'SN') continue;
+    const candidate = `${m[1]} ${letters}`;
+    if (rows.some(r => r.itemSupply.startsWith(m[1]) || r.itemCollected.startsWith(m[1]))) continue;
+    rows.push({
+      itemCollected: '',
+      serialNo: '',
+      itemSupply: candidate,
+      type: detectItemType(block) || 'R',
+      serviceReportNo: fallbackServiceReport
+    });
+  }
+
+  // A row can list more than one LOT (e.g. "LOT:VS01, LOT:UT25"); the extra
+  // ones get separated from their row by the scrambling. Sweep up any that
+  // weren't claimed above and attach each to the row whose collect code sits
+  // nearest before it in the text, which is the row it belongs to.
+  const lotTokenPattern = /(?:LOT|SN)[:.]?\s*([A-Z0-9]+)/gi;
+  let lotMatch;
+  while ((lotMatch = lotTokenPattern.exec(block)) !== null) {
+    const lot = lotMatch[1].toUpperCase();
+    if (claimedLots.has(lot)) continue;
+    claimedLots.add(lot);
+    let best = null, bestPos = -1;
+    rows.forEach(r => {
+      if (!r.itemCollected) return;
+      const pos = block.lastIndexOf(r.itemCollected, lotMatch.index);
+      if (pos !== -1 && pos > bestPos) { bestPos = pos; best = r; }
+    });
+    if (best) best.serialNo = best.serialNo ? `${best.serialNo}, ${lot}` : lot;
+  }
+
+  return rows;
+}
+
+function extractItemModel(text) {
+    const suffixCodeMatch = text.match(/(?:\d{3,6}\s+)?[A-Za-z0-9\-_]+\((?:S|R)\)/);
+    if (suffixCodeMatch) return suffixCodeMatch[0].trim();
+    const firstToken = text.match(/^(\S+(?:\s+\S+)?)\s+[A-Z]/);
+    return firstToken ? firstToken[1].trim() : (text.split(/\s+/)[0] || '');
+  }
+
+  function detectItemType(text) {
+    if (/\(S\)/.test(text)) return 'S';
+    if (/\(R\)/.test(text)) return 'R&E';
+    if (/Inspection Charges/i.test(text)) return 'I';
+    if (/RC-KS/i.test(text)) return 'R';
+    return null;
+  }
+
+  function findServiceReportForCode(text, code) {
+    if (!code) return '';
+    const bare = code.replace(/\((?:S|R)\)/i, '').replace(/^\d{3,6}\s+/, '').trim();
+    const esc = bare.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const m = text.match(new RegExp('([A-Z]{1,3}\\d{2,6})\\s*-\\s*[^.]*?\\(' + esc + '\\)[^.]*?\\.pdf', 'i'));
+    return m ? m[1] : '';
+  }
+
+  // Item table: isolate the row block right after the "Markup / Discount"
+  // header, bounded by "Thank you" OR a page-break marker (a repeated
+  // timestamp/URL footer) — some PDFs export "Thank you." onto the next
+  // page, and without this the block would swallow the footer junk in
+  // between.
+  let items = [];
+  const itemBlockMatch = norm.match(/Markup\s*\/\s*Discount\s*(.+?)\s*(?:Thank you|https?:\/\/|\d{1,2}\/\d{1,2}\/\d{2,4},\s*\d{1,2}:\d{2}\s*(?:AM|PM))/i);
+  const block = itemBlockMatch ? itemBlockMatch[1].trim() : '';
+
+  // Wider anchor for multi-item detection: some PDFs scramble the column
+  // headers across lines (e.g. "Item Item Markup / No. Qty. ... Discount"),
+  // which breaks the "Markup / Discount" anchor above entirely. Anchoring
+  // to "Item(s) Requested:" instead survives that, at the cost of including
+  // the header text — harmless here since the row-marker regex below only
+  // matches all-caps/digit code tokens, not header words.
+  const wideBlockMatch = norm.match(/Item\(s\) Requested:\s*(.+?)\s*(?:Thank you|https?:\/\/|\d{1,2}\/\d{1,2}\/\d{2,4},\s*\d{1,2}:\d{2}\s*(?:AM|PM))/i);
+  const wideBlock = wideBlockMatch ? wideBlockMatch[1].trim() : '';
+
+  if (wideBlock) {
+    // Try splitting into multiple well-formed rows, each with its own
+    // "<row#> <collect> 1 <supply code>" structure. A request with
+    // genuinely separate items (different models, likely different
+    // service-report attachments) will produce 2+ of these. Codes are
+    // required to be all-caps/digits (with an optional "SN: ..." serial)
+    // so a stray number inside a description (e.g. "36 cm") can't be
+    // mistaken for a row marker.
+    const rowPattern = /\b(\d{1,2})\s+([A-Z0-9][A-Z0-9\-]*(?:\s*SN\.?:?\s*[A-Za-z0-9\-]+)?)\s+1\s+((?:\d{3,6}\s+)?[A-Z0-9][A-Z0-9\-]*(?:\(S\)|\(R\))?)(?=\s|$)/g;
+    const rawRows = [];
+    let m;
+    while ((m = rowPattern.exec(wideBlock)) !== null) {
+      rawRows.push({ collectRaw: m[2].trim(), supplyRaw: m[3].trim() });
+    }
+    const wellFormed = rawRows.filter(r => r.collectRaw && !/^RC-KS$/i.test(r.supplyRaw.split(/\s+/)[0]));
+
+    if (rawRows.length >= 2 && wellFormed.length >= 2) {
+      items = rawRows.map(r => {
+        let collected = r.collectRaw, serial = '';
+        const snMatch = r.collectRaw.match(/^(.+?)\s*SN\.?:?\s*([A-Za-z0-9\-]+)$/i);
+        if (snMatch) {
+          collected = snMatch[1].replace(/[,\s]+$/, '').trim();
+          serial = snMatch[2].trim();
+        }
+        const supply = extractItemModel(r.supplyRaw);
+        const itemType = detectItemType(r.supplyRaw) || detectItemType(wideBlock) || 'R';
+        const svcReport = findServiceReportForCode(norm, supply) || findServiceReportForCode(norm, collected);
+        return { itemCollected: collected, serialNo: serial, itemSupply: supply, type: itemType, serviceReportNo: svcReport || serviceReportNo };
+      });
+    }
+
+    // Second strategy, for long item tables. When a request has many rows,
+    // the PDF export interleaves each row's description with the next
+    // row's marker, so the structural pattern above finds only a few of
+    // them. Here we key off the collect codes themselves (which carry a
+    // LOT:/SN: tag) and reconstruct each row's supply code from evidence
+    // elsewhere in the block, which survives the scrambling.
+    const scrambled = parseScrambledItemRows(wideBlock, norm, serviceReportNo);
+    if (scrambled.length > items.length) items = scrambled;
+  }
+
+  if (items.length === 0) {
+    // Single-item fallback (also covers the "RC-KS service line + real
+    // item" pattern, which isn't a genuine multi-item split). Prefer the
+    // narrower Markup/Discount-anchored block; fall back to the wider one
+    // if that anchor didn't survive this PDF's layout.
+    const fallbackBlock = block || wideBlock;
+    let itemCollected = '', itemSupply = '', serialNo = '';
+    if (fallbackBlock) {
+      const collectMatch = fallbackBlock.match(/(\d{1,2})\.?\s+(.+?)\s+1\s+/i);
+      if (collectMatch) {
+        const rawCollect = collectMatch[2].trim();
+        const snMatch = rawCollect.match(/^(.+?)\s*SN\.?:?\s*([A-Za-z0-9\-]+)$/i);
+        if (snMatch) {
+          itemCollected = snMatch[1].replace(/[,\s]+$/, '').trim();
+          serialNo = snMatch[2].trim();
+        } else {
+          itemCollected = rawCollect;
+        }
+      }
+      const suffixCodeMatch = fallbackBlock.match(/(?:\d{3,6}\s+)?[A-Za-z0-9\-_]+\((?:S|R)\)/);
+      if (suffixCodeMatch) {
+        itemSupply = suffixCodeMatch[0].trim();
+      } else if (/RC-KS/i.test(fallbackBlock) && itemCollected) {
+        itemSupply = `${itemCollected}(S)`;
+      } else {
+        const rowMatch = fallbackBlock.match(/(\d{1,2})\.?\s+.+?\s+1\s+(\S+(?:\s+\S+)?)\s+[A-Z]/);
+        if (rowMatch) itemSupply = rowMatch[2].trim();
+      }
+    }
+    const singleType = detectItemType(fallbackBlock) || (function () {
+      let t = 'R';
+      const lower = norm.toLowerCase();
+      if (lower.includes('trade-in') || lower.includes('trade in')) t = 'R&E';
+      else if (lower.includes('cost estimation') && !lower.includes('inspection')) t = 'RCE';
+      else if (lower.includes('inspection')) t = 'I';
+      return t;
+    })();
+    items = [{ itemCollected, serialNo, itemSupply, type: singleType, serviceReportNo }];
+  }
+
+  return {
+    emailRefNo,
+    date: toSheetDate(requestDateRaw),
+    requestBy: requestByCode,
+    requestByName,
+    regionBy: regionByCode,
+    responsibilityName,
+    hospName: customerNameRaw ? trimHospName(customerNameRaw) : '',
+    attn,
+    logRef: technicalRef,
+    remarks,
+    items,
+    itemCollected: items[0].itemCollected,
+    itemSupply: items[0].itemSupply,
+    serialNo: items[0].serialNo,
+    serviceReportNo: items[0].serviceReportNo,
+    type: items[0].type,
+    sendBy: 'EMAIL'
+  };
+}
+
+let itemQueue = [];
+let itemQueueIndex = 0;
+let forcedNextRow = null; // kept for the (now single-item) queue machinery below
+
+function fillForm(f) {
+  document.getElementById('f_date').value = f.date || '';
+  setResolvedField('f_requestBy', f.requestBy, f.requestByName);
+  setResolvedField('f_regionBy', f.regionBy, f.responsibilityName);
+  document.getElementById('f_hospName').value = f.hospName || '';
+  document.getElementById('f_logRef').value = f.logRef || '';
+  document.getElementById('f_attn').value = f.attn || '';
+  document.getElementById('f_emailRefNo').value = f.emailRefNo || '';
+  document.getElementById('f_sendBy').value = f.sendBy || 'EMAIL';
+  document.getElementById('f_remarks').value = f.remarks || '';
+
+  // Multiple items in one request share the same Ref. No AND the same
+  // row — combine each item's fields into one comma-separated cell rather
+  // than spreading them across rows.
+  const items = f.items && f.items.length ? f.items : [{
+    itemCollected: f.itemCollected, serialNo: f.serialNo, itemSupply: f.itemSupply,
+    serviceReportNo: f.serviceReportNo, type: f.type
+  }];
+  const joinField = key => [...new Set(items.map(i => i[key]).filter(Boolean))].join('\n');
+  const types = [...new Set(items.map(i => i.type).filter(Boolean))];
+
+  itemQueue = [{
+    itemCollected: joinField('itemCollected'),
+    serialNo: joinField('serialNo'),
+    itemSupply: joinField('itemSupply'),
+    serviceReportNo: joinField('serviceReportNo'),
+    type: types[0] || 'R'
+  }];
+  itemQueueIndex = 0;
+  forcedNextRow = null;
+  document.getElementById('f_refNo').value = '';
+  applyItemFields(itemQueue[0]);
+
+  const note = document.getElementById('itemPicker');
+  if (items.length > 1) {
+    note.style.display = 'block';
+    note.querySelector('p').textContent =
+      `This request has ${items.length} items — combined into this one row (Item Collected, Item Supply, and Service Report No each list all ${items.length}).`;
+    if (types.length > 1) {
+      document.getElementById('f_type').title = `Items disagree on type: ${types.join(', ')} — double-check.`;
+    }
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+function applyItemFields(item) {
+  document.getElementById('f_itemCollected').value = item.itemCollected || '';
+  document.getElementById('f_serialNo').value = item.serialNo || '';
+  document.getElementById('f_itemSupply').value = item.itemSupply || '';
+  document.getElementById('f_serviceReportNo').value = item.serviceReportNo || '';
+  if (item.type) document.getElementById('f_type').value = item.type;
+  ['f_itemCollected', 'f_serialNo', 'f_itemSupply', 'f_serviceReportNo'].forEach(autoSizeTextarea);
+}
+
+// Grow the stacked-item textareas to fit however many lines they hold.
+function autoSizeTextarea(id) {
+  const el = document.getElementById(id);
+  if (!el || el.tagName !== 'TEXTAREA') return;
+  el.style.height = 'auto';
+  el.style.height = Math.max(el.scrollHeight, 40) + 'px';
+}
+
+function updateItemQueueNote() {
+  const note = document.getElementById('itemPicker');
+  if (itemQueue.length < 2) {
+    note.style.display = 'none';
+    return;
+  }
+  note.style.display = 'block';
+  const total = itemQueue.length;
+  note.querySelector('p').textContent =
+    `This request has ${total} items — one click on "Add row to sheet" will add all ${total}, each on its own row with the same Ref. No.`;
+}
+
+// code: resolved staff code (may be ''); rawName: the name text pulled from
+// the PDF, used as a fallback and a tooltip so you can sanity-check the match.
+function setResolvedField(inputId, code, rawName) {
+  const input = document.getElementById(inputId);
+  const fieldDiv = input.closest('.field');
+  if (code) {
+    input.value = code;
+    input.title = rawName ? `Matched from "${rawName}"` : '';
+    fieldDiv.classList.add('auto');
+  } else {
+    input.value = rawName || '';
+    input.title = rawName ? `No staff code match for "${rawName}" — check spelling or add them to the list` : '';
+    fieldDiv.classList.remove('auto');
+  }
+}
+
+// Pure state update — moves the queue to the next item and points it at
+// the row right below the one just written, carrying the Ref No forward.
+// No network calls here; submitAllItems() drives when this gets called.
+function advanceItemQueueState(writtenRow, writtenRefNo) {
+  itemQueueIndex++;
+  forcedNextRow = writtenRow + 1;
+  document.getElementById('f_refNo').value = writtenRefNo || '';
+  applyItemFields(itemQueue[itemQueueIndex]);
+  updateItemQueueNote();
+}
+
+// Sends whatever is currently in the form as one row. Returns
+// { row, refNo, sheet, confirmed } on success, or throws.
+async function submitOneRow() {
+  const url = document.getElementById('cfgUrl').value.trim();
+  if (!url) {
+    document.getElementById('configDetails').open = true;
+    throw new Error('Paste your Apps Script Web App URL in Connection settings first.');
+  }
+
+  const payload = {
+    sheetName: document.getElementById('cfgSheet').value.trim() || '2026',
+    startColumn: document.getElementById('cfgStartCol').value,
+    row: forcedNextRow !== null ? forcedNextRow : 'next',
+    data: {
+      date: document.getElementById('f_date').value.trim(),
+      refNo: document.getElementById('f_refNo').value.trim(),
+      requestBy: document.getElementById('f_requestBy').value.trim(),
+      regionBy: document.getElementById('f_regionBy').value.trim(),
+      type: document.getElementById('f_type').value,
+      hospName: document.getElementById('f_hospName').value.trim(),
+      itemCollected: document.getElementById('f_itemCollected').value.trim(),
+      itemSupply: document.getElementById('f_itemSupply').value.trim(),
+      serialNo: document.getElementById('f_serialNo').value.trim(),
+      serviceReportNo: document.getElementById('f_serviceReportNo').value.trim(),
+      logRef: document.getElementById('f_logRef').value.trim(),
+      attn: document.getElementById('f_attn').value.trim(),
+      emailRefNo: document.getElementById('f_emailRefNo').value.trim(),
+      sendBy: document.getElementById('f_sendBy').value.trim(),
+      remarks: document.getElementById('f_remarks').value.trim(),
+      doneBy: document.getElementById('f_doneBy').value.trim()
+    }
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight to Apps Script
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.status === 'ok') {
+      return { row: json.row, refNo: json.refNo, sheet: json.sheet, confirmed: true };
+    }
+    throw new Error('Apps Script error: ' + (json.message || 'unknown error'));
+  } catch (err) {
+    // Common Apps Script quirk: the browser can block reading the response
+    // on the redirect Google issues even when the deployment is public.
+    // Retry "blind" with no-cors so the write still goes through — we just
+    // can't read back confirmation (or the row/Ref No it landed on), so a
+    // multi-item chain can't safely auto-continue past this point.
+    try {
+      await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      return { row: forcedNextRow, refNo: null, sheet: payload.sheetName, confirmed: false };
+    } catch (err2) {
+      throw new Error('Could not reach the Apps Script URL at all (' + err2.message + '). See the troubleshooting steps: test the URL directly in a browser tab, and make sure you deployed a NEW version after any code edits.');
+    }
+  }
+}
+
+// One click submits every remaining item in the queue, back to back —
+// item 1 goes to the next empty row, then each following item
+// automatically targets the row right below with the same Ref No, no
+// extra clicks needed.
+async function submitAllItems() {
+  submitBtn.disabled = true;
+  resultBanner.className = 'result-banner';
+  const total = itemQueue.length;
+  const writtenRows = [];
+
+  try {
+    while (true) {
+      submitBtn.textContent = total > 1 ? `Sending item ${itemQueueIndex + 1} of ${total}…` : 'Sending…';
+      const result = await submitOneRow();
+      writtenRows.push(result.row);
+
+      if (!result.confirmed) {
+        resultBanner.textContent = total > 1
+          ? `Item ${itemQueueIndex + 1} of ${total} sent, but the browser blocked reading confirmation (a known Apps Script quirk) — can't safely continue automatically. Check the sheet, then click "Add row to sheet" again to keep going.`
+          : 'Sent — but the browser blocked reading the confirmation (a known Apps Script quirk). Check the sheet to confirm the row landed.';
+        resultBanner.className = 'result-banner ok show';
+        break;
+      }
+
+      const isLast = itemQueueIndex + 1 >= total;
+      if (isLast) {
+        resultBanner.textContent = total > 1
+          ? `Added all ${total} items to rows ${writtenRows.join(', ')} on tab "${result.sheet}".`
+          : `Added to row ${result.row} on tab "${result.sheet}".`;
+        resultBanner.className = 'result-banner ok show';
+        updatePreviewBadge();
+        forcedNextRow = null;
+        document.getElementById('itemPicker').style.display = 'none';
+        break;
+      }
+
+      advanceItemQueueState(result.row, result.refNo);
+    }
+  } catch (err) {
+    resultBanner.textContent = err.message;
+    resultBanner.className = 'result-banner err show';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Add row to sheet';
+  }
+}
+
+document.getElementById('genBookmarkBtn').addEventListener('click', () => {
+  const url = document.getElementById('cfgUrl').value.trim();
+  const sheet = document.getElementById('cfgSheet').value.trim();
+  const bookmarkField = document.getElementById('bookmarkLink');
+  if (!url) {
+    bookmarkField.value = '';
+    bookmarkField.placeholder = 'Paste your Apps Script URL above first';
+    return;
+  }
+  const base = window.location.href.split('?')[0];
+  const params = new URLSearchParams();
+  params.set('url', url);
+  if (sheet) params.set('sheet', sheet);
+  bookmarkField.value = `${base}?${params.toString()}`;
+  bookmarkField.select();
+});
+
+submitBtn.addEventListener('click', () => submitAllItems());
+</script>
+</body>
+</html>
