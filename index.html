@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ummi Surgical — Internal Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EDF1EF;
+    --panel: #FFFFFF;
+    --rule: #D9E0DD;
+    --ink: #182528;
+    --ink-soft: #55666A;
+    --teal: #0E6B66;
+    --teal-dim: #0E6B6614;
+    --copper: #B9711F;
+  }
+  *{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', -apple-system, Segoe UI, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8vh 20px 10vh;
+  }
+  .sheet{
+    width: 100%;
+    max-width: 640px;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    box-shadow: 0 1px 2px rgba(24,37,40,0.04);
+  }
+  .sheet__head{
+    padding: 34px 36px 26px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .mark{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--teal);
+    margin: 0 0 10px;
+  }
+  h1{
+    font-family: 'IBM Plex Serif', Georgia, serif;
+    font-weight: 600;
+    font-size: 1.7rem;
+    line-height: 1.25;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  .sheet__head p{
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    max-width: 46ch;
+    line-height: 1.5;
+  }
+  .list{
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .list li{
+    border-bottom: 1px solid var(--rule);
+  }
+  .list li:last-child{
+    border-bottom: none;
+  }
+  .tool{
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 22px 36px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .tool:hover, .tool:focus-visible{
+    background: var(--teal-dim);
+    outline: none;
+  }
+  .tool:focus-visible{
+    box-shadow: inset 3px 0 0 var(--teal);
+  }
+  .code{
+    flex: 0 0 auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--copper);
+    border: 1px solid currentColor;
+    padding: 4px 7px;
+    line-height: 1;
+  }
+  .tool__body{
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .tool__name{
+    font-size: 1.02rem;
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+  .tool__desc{
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    margin: 0;
+    line-height: 1.45;
+  }
+  .note{
+    padding: 20px 36px 28px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+  @media (max-width: 480px){
+    .sheet__head{ padding: 26px 22px 20px; }
+    .tool{ padding: 18px 22px; gap: 14px; }
+    .note{ padding: 16px 22px 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="sheet__head">
+    <p class="mark">UMMI SURGICAL</p>
+    <h1>Internal tools</h1>
+    <p>Automation for PPM costing, repair intake, and the other paperwork nobody enjoys typing twice.</p>
+  </div>
+
+  <ul class="list" id="toolList"></ul>
+
+  <p class="note">Open a tool below — each one runs entirely in your browser.</p>
+</div>
+
+<script>
+  // To add a tool later: add one object here. Nothing else on this page needs to change.
+  const TOOLS = [
+    {
+      code: "PPM",
+      name: "PPM Costing Generator",
+      desc: "Turn a Karl Storz quotation PDF into Non-Comprehensive and Comprehensive PPM costing.",
+      href: "ppm-costing-generator.html"
+    },
+    {
+      code: "RTI",
+      name: "Repair & Trade-in Intake",
+      desc: "Read a repair or trade-in request PDF and log each item to the tracking sheet.",
+      href: "repair-trade-in-intake.html"
+    }
+  ];
+
+  const list = document.getElementById('toolList');
+  TOOLS.forEach(tool => {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.className = 'tool';
+    a.href = tool.href;
+    a.innerHTML = `
+      <span class="code">${tool.code}</span>
+      <span class="tool__body">
+        <p class="tool__name">${tool.name}</p>
+        <p class="tool__desc">${tool.desc}</p>
+      </span>
+    `;
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+</script>
+
+</body>
+</html>
