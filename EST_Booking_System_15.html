@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EST Machine Booking System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f1117;--ink2:#3a3d47;--ink3:#8a8d99;
+  --surface:#f5f4f0;--card:#fff;--border:#e2e1dc;
+  --am:#0a6640;--am-bg:#e6f5ed;
+  --pm:#1a4fa0;--pm-bg:#e8f0fc;
+  --danger:#c0392b;--danger-bg:#fdf0ee;
+  --success:#0a6640;--success-bg:#e6f5ed;
+  --accent:#1a4fa0;
+}
+body{font-family:'DM Sans',sans-serif;background:#f5f4f0;color:var(--ink);min-height:100vh;padding:1.5rem}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.app{max-width:980px;margin:0 auto;animation:fadeUp .35s ease both}
+
+/* ── HEADER ── */
+.app-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.2rem;flex-wrap:wrap;gap:8px}
+.app-header h1{font-size:20px;font-weight:600}
+.app-header p{font-size:12px;color:var(--ink3);margin-top:3px}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.sync-row{display:flex;align-items:center;gap:8px}
+.sync-status{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.sync-status.ok{background:var(--am-bg);color:var(--am)}
+.sync-status.err{background:var(--danger-bg);color:var(--danger)}
+.sync-status.loading{background:#f0f0ee;color:var(--ink3)}
+.hbtn{font-size:11px;padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--ink3);font-family:'DM Sans',sans-serif}
+.hbtn:hover{background:var(--card)}
+.last-sync{font-size:10px;color:var(--ink3)}
+
+/* ── SETUP SCREEN ── */
+.setup-screen{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:2rem;max-width:620px;margin:0 auto}
+.setup-screen h2{font-size:17px;font-weight:600;margin-bottom:8px}
+.setup-screen p{font-size:13px;color:var(--ink3);margin-bottom:1.5rem;line-height:1.7}
+.steps{display:flex;flex-direction:column;gap:12px;margin-bottom:1.5rem}
+.step{display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-body{font-size:13px;color:var(--ink2);line-height:1.6}
+.step-body code{background:var(--surface);padding:1px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:11px}
+.step-body a{color:var(--accent);text-decoration:none}
+.url-row{display:flex;gap:8px}
+.url-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:13px;background:var(--surface);color:var(--ink);font-family:'DM Sans',sans-serif;outline:none}
+.url-row input:focus{border-color:var(--accent)}
+.btn-connect{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--ink);color:#fff;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.url-err{font-size:12px;color:var(--danger);margin-top:6px;display:none}
+
+/* ── TOP NAV ── */
+.top-nav{display:flex;gap:4px;margin-bottom:1.2rem;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content}
+.tnav{padding:7px 18px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--ink3);font-family:'DM Sans',sans-serif;transition:all .15s}
+.tnav.active{background:var(--ink);color:#fff}
+.tnav:not(.active):hover{background:var(--surface);color:var(--ink)}
+
+/* ── STATS BAR ── */
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.2rem}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 15px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent)}
+.stat-num{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;color:var(--ink);line-height:1}
+.stat-lbl{font-size:11px;color:var(--ink3);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+
+/* ── BOOK VIEW ── */
+.book-layout{display:grid;grid-template-columns:1fr 1.45fr;gap:14px;align-items:start}
+.panel{background:var(--ink);border-radius:14px;padding:18px;color:#fff}
+.panel-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-bottom:12px;font-family:'DM Mono',monospace}
+.panel-tabs{display:flex;gap:0;margin-bottom:14px;background:rgba(255,255,255,.07);border-radius:8px;padding:3px}
+.ptab{flex:1;text-align:center;padding:6px;font-size:11px;font-weight:500;cursor:pointer;border-radius:6px;color:rgba(255,255,255,.45);border:none;background:none;transition:all .15s}
+.ptab.active{background:rgba(255,255,255,.15);color:#fff}
+.machine-list{display:flex;flex-direction:column;gap:7px}
+.mcard{border-radius:10px;padding:12px 13px;cursor:pointer;transition:background .15s,transform .1s;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+.mcard:hover{background:rgba(255,255,255,.12);transform:translateX(2px)}
+.mcard.mcard-selected{background:rgba(26,79,160,.35);border-color:rgba(100,150,255,.4)}
+.mcard.mcard-busy{border-color:rgba(231,76,60,.25)}
+.mcard-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.mcard-name{font-size:13px;font-weight:600;color:#fff}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.avail{background:#2ecc71;box-shadow:0 0 6px #2ecc71}
+.status-dot.busy{background:#e74c3c;box-shadow:0 0 6px #e74c3c}
+.mcard-serial{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px}
+.mcard-cal{font-size:10px;color:rgba(255,255,255,.4)}
+.mcard-cal b{color:rgba(255,255,255,.7)}
+.mcard-who{font-size:10px;color:#f39c12;margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.08)}
+.mcard-hint{text-align:center;font-size:10px;color:rgba(255,255,255,.2);padding-top:10px;font-family:'DM Mono',monospace}
+.log{display:flex;flex-direction:column;gap:7px}
+.log-row{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:start}
+.log-dot{width:8px;height:8px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.log-machine{font-size:12px;font-weight:600;color:#fff}
+.log-detail{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
+.log-dates{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);text-align:right;margin-bottom:3px}
+.log-del{background:none;border:none;cursor:pointer;color:rgba(255,255,255,.2);font-size:13px;padding:0;display:block;margin-left:auto}
+.log-del:hover{color:#e74c3c}
+.log-active-badge{font-size:9px;background:rgba(231,76,60,.25);color:#e74c3c;padding:1px 6px;border-radius:4px;display:inline-block;margin-top:2px}
+.log-empty{text-align:center;font-size:11px;color:rgba(255,255,255,.2);padding:1.5rem 0;font-family:'DM Mono',monospace}
+
+/* ── FORM PANEL ── */
+.form-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+.fp-empty{text-align:center;padding:3rem 1rem;color:var(--ink3);font-size:13px}
+.fp-empty svg{display:block;margin:0 auto 12px;opacity:.2}
+.fp-title{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:3px}
+.fp-sub{font-size:12px;color:var(--ink3);margin-bottom:16px}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:13px}
+.fg label{font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+select,input[type=text],input[type=date],textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:13px;background:var(--surface);color:var(--ink);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
+select:focus,input:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:58px}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.slot-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.slot-toggle{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:37px;flex-shrink:0}
+.sbtn{width:50px;border:none;background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;color:var(--ink3);font-family:'DM Sans',sans-serif;transition:all .15s;border-right:1px solid var(--border)}
+.sbtn:last-child{border-right:none}
+.sbtn.active-am{background:var(--am-bg);color:var(--am)}
+.sbtn.active-pm{background:var(--pm-bg);color:var(--pm)}
+.sbtn:not([class*="active"]):hover{background:#eee}
+.banner{border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:13px;display:none;line-height:1.5}
+.banner.err{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(192,57,43,.2)}
+.banner.ok{background:var(--success-bg);color:var(--success);border:1px solid rgba(10,102,64,.2)}
+.fp-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.btn-ghost{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--ink2);font-family:'DM Sans',sans-serif}
+.btn-ghost:hover{background:var(--surface)}
+.btn-confirm{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--ink);color:#fff;font-family:'DM Sans',sans-serif;transition:opacity .15s,background .15s}
+.btn-confirm:disabled{opacity:.3;cursor:not-allowed}
+.btn-confirm.ready{background:#0a6640}
+
+/* ── HOSPITAL SEARCH ── */
+.hosp-wrap{position:relative}
+.hosp-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;max-height:180px;overflow-y:auto;z-index:100;margin-top:4px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.hosp-dropdown.open{display:block}
+.hosp-opt{padding:8px 12px;font-size:13px;cursor:pointer;color:var(--ink)}
+.hosp-opt:hover,.hosp-opt.sel{background:var(--pm-bg);color:var(--pm)}
+
+/* ── CALENDAR VIEW ── */
+.cal-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.cal-month-title{font-size:17px;font-weight:600;color:var(--ink)}
+.cal-nav-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--ink2)}
+.cal-nav-btn:hover{background:var(--surface)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem}
+.cal-dow{text-align:center;font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;padding:6px 0;font-family:'DM Mono',monospace}
+.cal-cell{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 5px;min-height:88px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.cal-cell:hover{border-color:#aaa;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.cal-cell.cal-today{border-color:var(--accent);background:#f0f5ff}
+.cal-cell.cal-selected{border-color:var(--ink)!important;box-shadow:0 0 0 2px var(--ink)}
+.cal-cell.cal-other-month{opacity:.4}
+.cal-cell.cal-empty{background:transparent;border-color:transparent;cursor:default;pointer-events:none}
+.cal-cell.cal-empty:hover{box-shadow:none}
+.cal-day-num{font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:4px;font-family:'DM Mono',monospace}
+.cal-today .cal-day-num{color:var(--accent)}
+.cal-bar-row{display:flex;gap:2px;margin-bottom:2px}
+.cal-bar{height:10px;border-radius:3px;flex:1;min-width:0}
+.bar-free{background:#2ecc71}
+.bar-partial{background:#f39c12}
+.bar-busy{background:#e74c3c}
+/* Legend */
+.cal-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:4px;margin-bottom:1rem}
+.cal-legend{display:flex;gap:14px;flex-wrap:wrap}
+.cal-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink3)}
+.cal-leg-bar{width:22px;height:10px;border-radius:3px}
+.cal-pos-key{display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:9px;color:var(--ink3);font-family:'DM Mono',monospace;text-align:center}
+.cal-pos-key span{background:var(--surface);border-radius:3px;padding:1px 4px}
+/* Day detail panel */
+.cal-detail{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:4px}
+.cal-detail-title{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:14px}
+.cal-detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
+.cal-detail-row:last-child{border-bottom:none}
+.cal-detail-machine{font-size:13px;font-weight:600;color:var(--ink)}
+.cal-detail-slots{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.cal-slot-line{font-size:12px}
+.cal-slot-free{color:var(--am)}
+.cal-slot-busy{color:var(--danger)}
+
+/* ── SETTINGS VIEW ── */
+.settings-layout{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:start}
+.settings-sidenav{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:3px}
+.stab{padding:9px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--ink3);text-align:left;font-family:'DM Sans',sans-serif;transition:all .15s}
+.stab.active{background:var(--ink);color:#fff}
+.stab:not(.active):hover{background:var(--surface);color:var(--ink)}
+.settings-panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.settings-panel-title{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.settings-panel-sub{font-size:12px;color:var(--ink3);margin-bottom:16px}
+.settings-list{display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;margin-bottom:14px;padding-right:4px}
+.settings-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);gap:8px}
+.settings-item.pinned{background:var(--am-bg);border-color:rgba(10,102,64,.2)}
+.settings-item-name{font-size:13px;color:var(--ink);flex:1}
+.settings-item.pinned .settings-item-name{color:var(--am);font-weight:500}
+.pin-badge{font-size:10px;color:var(--am);background:rgba(10,102,64,.12);padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.item-del{background:none;border:none;cursor:pointer;color:var(--ink3);font-size:14px;padding:2px 5px;border-radius:4px;flex-shrink:0}
+.item-del:hover{background:var(--danger-bg);color:var(--danger)}
+.settings-add{display:flex;gap:8px;margin-bottom:16px}
+.settings-add input{flex:1;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:13px;background:var(--surface);color:var(--ink);font-family:'DM Sans',sans-serif;outline:none}
+.settings-add input:focus{border-color:var(--accent)}
+.btn-add{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:var(--accent);color:#fff;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.btn-add:hover{opacity:.85}
+.cal-dates-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.cal-date-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+.cal-date-machine{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.cal-date-serial{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink3);margin-bottom:10px}
+.cal-date-card input[type=date]{padding:7px 10px;font-size:12px}
+.cal-expiry-warn{font-size:10px;color:var(--danger);margin-top:5px}
+.cal-expiry-ok{font-size:10px;color:var(--am);margin-top:5px}
+.btn-save-settings{padding:10px 22px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#0a6640;color:#fff;font-family:'DM Sans',sans-serif}
+.btn-save-settings:hover{opacity:.85}
+.settings-save-row{display:flex;align-items:center;gap:12px}
+.settings-saved-msg{font-size:12px;color:var(--am);display:none}
+
+/* ── LOADING / TOAST ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(245,244,240,.8);display:none;align-items:center;justify-content:center;z-index:300}
+.loading-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 28px;text-align:center;font-size:13px;color:var(--ink2)}
+.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+
+@media(max-width:680px){
+  .book-layout,.settings-layout{grid-template-columns:1fr}
+  .stats-bar{grid-template-columns:repeat(2,1fr)}
+  .cal-mname{display:none}
+}
+
+/* ── LOG SORT BAR ── */
+.log-sort-bar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.sort-label{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.07em;font-family:'DM Mono',monospace;margin-right:2px;white-space:nowrap}
+.sort-btn{font-size:10px;padding:3px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.45);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;white-space:nowrap}
+.sort-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.sort-btn.active{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.3)}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-box"><div class="spinner"></div>Syncing with Google Drive...</div>
+</div>
+
+<div class="app">
+
+  <!-- SETUP SCREEN -->
+  <div id="setup-screen" style="display:none">
+    <div class="app-header"><div><h1>EST Machine Booking</h1><p>One-time setup required</p></div></div>
+    <div class="setup-screen">
+      <h2>Connect to Google Drive</h2>
+      <p>Follow these steps once. All computers will then share the same data stored in your Google Drive.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">Go to <a href="https://script.google.com" target="_blank">script.google.com</a> → <strong>New project</strong>.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">Paste the contents of <code>EST_Booking_AppScript.gs</code> into the editor. Click <strong>Save</strong>.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">Click <strong>Deploy → New deployment</strong>. Type: <strong>Web app</strong>. Execute as: <strong>Me</strong>. Access: <strong>Anyone</strong>. Deploy and authorise.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body">Copy the <strong>Web app URL</strong> (ends with <code>/exec</code>) and paste below. Use the same URL on every computer.</div></div>
+      </div>
+      <div class="url-row">
+        <input type="text" id="url-input" placeholder="https://script.google.com/macros/s/……/exec">
+        <button class="btn-connect" onclick="saveUrl()">Connect</button>
+      </div>
+      <div class="url-err" id="url-err">Must be a valid Apps Script URL ending with /exec</div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="main-app" style="display:none">
+    <div class="app-header">
+      <div><h1>EST Machine Booking</h1><p>Synced with Google Drive</p></div>
+      <div class="header-right">
+        <div class="sync-row">
+          <span class="sync-status loading" id="sync-status">Connecting...</span>
+          <button class="hbtn" onclick="refreshAll()">↻ Refresh</button>
+          <button class="hbtn" onclick="showSetup()">⚙ URL</button>
+        </div>
+        <span class="last-sync" id="last-sync"></span>
+      </div>
+    </div>
+
+    <!-- TOP NAV -->
+    <div class="top-nav">
+      <button class="tnav active" onclick="switchView('book')">Book</button>
+      <button class="tnav" onclick="switchView('calendar')">Calendar</button>
+      <button class="tnav" onclick="switchView('settings')">Settings</button>
+    </div>
+
+    <!-- STATS BAR (Book + Calendar) -->
+    <div class="stats-bar" id="stats-bar"></div>
+
+    <!-- BOOK VIEW -->
+    <div id="view-book">
+      <div class="book-layout">
+        <div class="panel">
+          <div class="panel-tabs">
+            <button class="ptab active" onclick="panelTab('machines')">Machines</button>
+            <button class="ptab" onclick="panelTab('log')">Bookings</button>
+          </div>
+          <div id="panel-machines">
+            <div class="panel-title">Select a unit to book</div>
+            <div class="machine-list" id="machine-list"></div>
+            <div class="mcard-hint">↑ tap to select</div>
+          </div>
+          <div id="panel-log" style="display:none">
+            <div class="panel-title">All bookings</div>
+            <div class="log-sort-bar" id="log-sort-bar">
+              <span class="sort-label">Sort:</span>
+              <button class="sort-btn active" onclick="setSort('date-desc')">Date ↓</button>
+              <button class="sort-btn" onclick="setSort('date-asc')">Date ↑</button>
+              <button class="sort-btn" onclick="setSort('machine')">Machine</button>
+              <button class="sort-btn" onclick="setSort('engineer')">Engineer</button>
+              <button class="sort-btn" onclick="setSort('purpose')">Purpose</button>
+            </div>
+            <div class="log" id="log-list"></div>
+          </div>
+        </div>
+        <div class="form-panel" id="form-panel"></div>
+      </div>
+    </div>
+
+    <!-- CALENDAR VIEW -->
+    <div id="view-calendar" style="display:none">
+      <div class="cal-header-row">
+        <button class="cal-nav-btn" onclick="prevMonth()">&#8249;</button>
+        <div class="cal-month-title" id="cal-title"></div>
+        <button class="cal-nav-btn" onclick="nextMonth()">&#8250;</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-footer">
+        <div class="cal-legend">
+          <div class="cal-leg-item"><div class="cal-leg-bar bar-free"></div>Available</div>
+          <div class="cal-leg-item"><div class="cal-leg-bar bar-partial"></div>Partial</div>
+          <div class="cal-leg-item"><div class="cal-leg-bar bar-busy"></div>Booked</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink3)">
+          Dot position:
+          <div class="cal-pos-key">
+            <span>612A</span><span>612C</span>
+            <span>615A</span><span>615B</span>
+          </div>
+        </div>
+      </div>
+      <div class="cal-detail" id="cal-detail" style="display:none"></div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="view-settings" style="display:none">
+      <div class="settings-layout">
+        <div class="settings-sidenav">
+          <button class="stab active" onclick="switchSettingsTab('hospitals')">Hospitals</button>
+          <button class="stab" onclick="switchSettingsTab('engineers')">Engineers</button>
+          <button class="stab" onclick="switchSettingsTab('calibration')">Calibration</button>
+        </div>
+        <div class="settings-panel" id="settings-content"></div>
+      </div>
+    </div>
+
+  </div><!-- end main-app -->
+</div><!-- end app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DEFAULTS
+// ══════════════════════════════════════════════
+const DEFAULT_HOSPITALS = [
+  'Alpha Specialist Centre','Ara Damansara Medical Centre (ADMC)','AVISENA Specialist',
+  'AVISENA W&C Specialist','Beacon Hospital','Bukit Tinggi MC (Manipal Hospital Klang)',
+  'Cardiac Vascular Sentral KL (CVSKL)','CENGILD G.I. Medical Centre',
+  'Columbia Asia - Bukit Rimau','Columbia Asia - Cheras','Columbia Asia - Klang',
+  'Columbia Asia - Petaling Jaya','Columbia Asia - Puchong','Columbia Asia - Setapak',
+  'Columbia Asia Bukit Jalil','Gasing Veterinary Hospital','Gleneagles - Kuala Lumpur',
+  'Global Doctors Hospital','HAT Tuanku Mizan','HAT96 Lumut',
+  'Hospital Kuala Lumpur (HKL)','Hospital Pakar Al Islam','Hospital Pakar An-Nur',
+  'Hospital Pakar Kanak-Kanak (HPKK)','Hospital Pengajar Universiti Putra M\'sia (HPUPM)',
+  'Hospital Pusrawi Sdn Bhd','Hospital Putrajaya','Hospital Selayang','Hospital Serdang',
+  'Hospital Seri Manjung','Hospital Shah Alam','Hospital Slim River',
+  'Hospital Sultan Idris Shah, Serdang','Hospital Sungai Buloh','Hospital Teluk Intan',
+  'Hospital Tengku Ampuan Rahimah (HTAR)','Hospital Tuanku Fauziah','Hospital Tung Shin',
+  'Hospital Tunku Azizah (HWKK HKL)','Hospital UMRA','iHeal Medical Services S/B',
+  'Institut Jantung Negara (IJN)','Institut Kanser Negara (IKN)','Johor Bharu',
+  'Kelana Jaya Medical Centre','Kelantan','KPJ Ampang Puteri Specialist Hospital',
+  'KPJ Damansara Specialist Hospital','KPJ Damansara Specialist Hospital 2 (DSH2)',
+  'KPJ Kajang Specialist Hospital','KPJ Klang Specialist Hospital',
+  'KPJ Rawang Specialist Hospital','KPJ Selangor Specialist Hospital Sdn Bhd',
+  'KPJ Sentosa Medical Centre Sdn Bhd','KPJ Sri Manjung Specialist Centre',
+  'KPJ Tawakkal Specialist Hospital','Kuala Lumpur Sports Medicine Centre',
+  'Lam & Koh Urology Association Sdn Bhd','Melaka','MSU Medical Centre','Pahang',
+  'Pantai Hospital Ampang','Pantai Hospital Cheras','Pantai Hospital Klang',
+  'Pantai Hospital Kuala Lumpur','Pantai Hospital Manjung','ParkCity Medical Centre',
+  'Penang','Prince Court Medical Centre (PCMC)',
+  'Pusat Perubatan Universiti Kebangsaan Malaysia (PPUKM)',
+  'Pusat Perubatan Universiti Malaya (PPUM)','Putra Specialist Hospital Kajang',
+  'Sabah','Sarawak','Seremban','Terengganu'
+].sort((a,b)=>a.localeCompare(b,'en',{sensitivity:'base'}));
+
+const DEFAULT_ENGINEERS = [
+  'Andrew Lim Eng Guaw','Choo Si Ying','Chua Kok Hau','Hasliza Mahmud',
+  'Kevin Lim Kien Yu','Khairul Fitri Mohamed Hanapi','Khoo Kah Khim','Lim Ken Kong',
+  'Mohd Zulfadzlie Zainal Abidin','Muhd Luqmanulhakim B. AbHarith','Ong Gek Lin',
+  'Ravin Anthony Thomas','Wesley Tan Kar Tatt','Wong Zhi Chuan'
+];
+
+const MACHINES_BASE = [
+  {id:'A',  name:'EST 612 (A)', serial:'SN-4075737', abbr:'612A'},
+  {id:'C',  name:'EST 612 (C)', serial:'SN-3442006', abbr:'612C'},
+  {id:'A2', name:'EST 615 (A)', serial:'SN-5976074', abbr:'615A'},
+  {id:'B2', name:'EST 615 (B)', serial:'SN-6609009', abbr:'615B'},
+];
+const DEFAULT_MACHINE_CAL = {A:'2026-11-25', C:'2026-10-10', A2:'2026-08-13', B2:'2026-04-23'};
+const PURPOSES = ['PPM','T&C','Loan','Calibration'];
+const PC = {PPM:'#1a4fa0','T&C':'#0a6640',Loan:'#b07d12',Calibration:'#a03020'};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let bookings = [];
+let hospitals = [...DEFAULT_HOSPITALS];
+let engineers = [...DEFAULT_ENGINEERS];
+let machineCal = {...DEFAULT_MACHINE_CAL};
+let sel = null, hospVal = '';
+let SCRIPT_URL = localStorage.getItem('est_script_url') || '';
+let currentView = 'book';
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+let settingsTabActive = 'hospitals';
+let logSort = 'date-desc';
+
+function getMachines() {
+  return MACHINES_BASE.map(m => ({...m, cal: machineCal[m.id] || ''}));
+}
+function getHospitals() {
+  // N/A always first, rest sorted
+  return ['N/A', ...hospitals];
+}
+
+// ══════════════════════════════════════════════
+//  INIT / SETUP
+// ══════════════════════════════════════════════
+function init() {
+  if (!SCRIPT_URL) { showSetup(); return; }
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = '';
+  refreshAll();
+  setInterval(() => { if (SCRIPT_URL) loadAll(); }, 60000);
+}
+
+function saveUrl() {
+  const val = document.getElementById('url-input').value.trim();
+  if (!val.includes('script.google.com') || !val.endsWith('/exec')) {
+    document.getElementById('url-err').style.display = 'block'; return;
+  }
+  SCRIPT_URL = val;
+  localStorage.setItem('est_script_url', SCRIPT_URL);
+  document.getElementById('url-err').style.display = 'none';
+  init();
+}
+function showSetup() {
+  document.getElementById('url-input').value = SCRIPT_URL;
+  document.getElementById('setup-screen').style.display = '';
+  document.getElementById('main-app').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+//  DRIVE SYNC
+// ══════════════════════════════════════════════
+function setStatus(type, msg) {
+  const el = document.getElementById('sync-status');
+  el.className = 'sync-status ' + type;
+  el.textContent = msg;
+}
+
+async function refreshAll() {
+  await loadAll();
+}
+
+// Single fetch loads bookings + settings together (v3 backend)
+async function loadAll() {
+  setStatus('loading', 'Syncing...');
+  try {
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.set('action', 'load');
+    const res = await fetch(url.toString(), {redirect:'follow'});
+    const data = await res.json();
+
+    // Bookings
+    if (Array.isArray(data.bookings)) bookings = data.bookings;
+    else if (Array.isArray(data)) bookings = data; // fallback
+
+    // Settings
+    const s = data.settings || {};
+    if (s.hospitals  && Array.isArray(s.hospitals))        hospitals  = s.hospitals;
+    if (s.engineers  && Array.isArray(s.engineers))        engineers  = s.engineers;
+    if (s.machineCal && typeof s.machineCal === 'object')  machineCal = s.machineCal;
+
+    setStatus('ok', '● Synced');
+    document.getElementById('last-sync').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+    renderAll();
+    if (document.getElementById('panel-log').style.display !== 'none') renderLog();
+    if (currentView === 'calendar') renderCalendar();
+  } catch(e) {
+    setStatus('err', '✕ Sync failed');
+  }
+}
+
+async function saveSettingsToDrive() {
+  const settings = { hospitals, engineers, machineCal };
+  const url = new URL(SCRIPT_URL);
+  url.searchParams.set('action', 'saveSettings');
+  url.searchParams.set('settings', encodeURIComponent(JSON.stringify(settings)));
+  showLoading(true);
+  try {
+    const res = await fetch(url.toString(), {redirect:'follow'});
+    await res.json();
+    toast('Settings saved to Google Drive');
+    const msg = document.getElementById('settings-saved-msg');
+    if (msg) { msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 3000); }
+  } catch(e) {
+    toast('Error saving settings — check connection');
+  }
+  showLoading(false);
+}
+
+async function apiCall(params) {
+  const url = new URL(SCRIPT_URL);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
+  showLoading(true);
+  try {
+    const res = await fetch(url.toString(), {redirect:'follow'});
+    await res.json();
+    await loadAll();
+  } catch(e) {
+    toast('Sync error — please refresh');
+    setStatus('err', '✕ Sync failed');
+  }
+  showLoading(false);
+}
+
+function showLoading(v) {
+  document.getElementById('loading').style.display = v ? 'flex' : 'none';
+}
+
+// ══════════════════════════════════════════════
+//  VIEW NAVIGATION
+// ══════════════════════════════════════════════
+function switchView(view) {
+  currentView = view;
+  ['book','calendar','settings'].forEach(v => {
+    document.getElementById('view-'+v).style.display = v === view ? '' : 'none';
+  });
+  document.querySelectorAll('.tnav').forEach((t,i) => {
+    t.classList.toggle('active', ['book','calendar','settings'][i] === view);
+  });
+  document.getElementById('stats-bar').style.display = view === 'settings' ? 'none' : '';
+  if (view === 'calendar') renderCalendar();
+  if (view === 'settings') renderSettings();
+}
+
+function panelTab(tab) {
+  document.querySelectorAll('.ptab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='machines')||(i===1&&tab==='log')));
+  document.getElementById('panel-machines').style.display = tab==='machines'?'':'none';
+  document.getElementById('panel-log').style.display = tab==='log'?'':'none';
+  if (tab==='log') renderLog();
+}
+
+// ══════════════════════════════════════════════
+//  BOOKING LOGIC
+// ══════════════════════════════════════════════
+function toSlot(d,s) {
+  const [y,m,dd]=d.split('-').map(Number);
+  const dn=(new Date(y,m-1,dd)-new Date(2020,0,1))/86400000;
+  return dn*2+(s==='PM'?1:0);
+}
+function overlap(s1,e1,s2,e2){return s1<=e2&&e1>=s2;}
+function hasConflict(mid,dOut,sOut,dRet,sRet,excl){
+  const s1=toSlot(dOut,sOut),e1=toSlot(dRet,sRet);
+  return bookings.some(b=>{if(b.id===excl||b.machineId!==mid)return false;return overlap(s1,e1,toSlot(b.dateOut,b.slotOut),toSlot(b.dateReturn,b.slotReturn));});
+}
+function isSlotBooked(mid,dateStr,ampm){
+  const sl=toSlot(dateStr,ampm);
+  return bookings.some(b=>b.machineId===mid&&overlap(sl,sl,toSlot(b.dateOut,b.slotOut),toSlot(b.dateReturn,b.slotReturn)));
+}
+function bookedNow(mid){const t=today(),ns=toSlot(t,nowAMPM());return bookings.some(b=>b.machineId===mid&&overlap(ns,ns,toSlot(b.dateOut,b.slotOut),toSlot(b.dateReturn,b.slotReturn)));}
+function activeBooking(mid){const t=today(),ns=toSlot(t,nowAMPM());return bookings.find(b=>b.machineId===mid&&overlap(ns,ns,toSlot(b.dateOut,b.slotOut),toSlot(b.dateReturn,b.slotReturn)));}
+function today(){return new Date().toISOString().split('T')[0];}
+function nowAMPM(){return new Date().getHours()<12?'AM':'PM';}
+function fmtDate(iso){
+  if(!iso)return'Not set';
+  const[y,m,d]=iso.split('-');
+  return `${parseInt(d)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]} ${y}`;
+}
+
+// ══════════════════════════════════════════════
+//  RENDER — BOOK VIEW
+// ══════════════════════════════════════════════
+function renderStats() {
+  const out = getMachines().filter(m=>bookedNow(m.id)).length;
+  document.getElementById('stats-bar').innerHTML =
+    stat(getMachines().length,'Total units') +
+    stat(getMachines().length-out,'Available','#0a6640') +
+    stat(out,'In use','#c0392b') +
+    stat(bookings.length,'Total bookings');
+}
+function stat(n,l,accent){
+  return `<div class="stat"${accent?` style="--accent:${accent}"`:''}>
+    <div class="stat-num">${n}</div><div class="stat-lbl">${l}</div></div>`;
+}
+
+function renderMachines() {
+  document.getElementById('machine-list').innerHTML = getMachines().map(m => {
+    const busy=bookedNow(m.id),ab=busy?activeBooking(m.id):null,isSel=sel===m.id;
+    return `<div class="mcard${busy?' mcard-busy':''}${isSel?' mcard-selected':''}" onclick="pick('${m.id}')">
+      <div class="mcard-top"><div class="mcard-name">${m.name}</div><div class="status-dot ${busy?'busy':'avail'}"></div></div>
+      <div class="mcard-serial">${m.serial}</div>
+      <div class="mcard-cal">Cal due <b>${fmtDate(m.cal)}</b></div>
+      ${ab?`<div class="mcard-who">Out with ${ab.engineer} — returns ${ab.dateReturn} ${ab.slotReturn}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function pick(id){sel=id;hospVal='';renderMachines();renderForm();}
+
+
+function setSort(mode) {
+  logSort = mode;
+  document.querySelectorAll('.sort-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick').includes("'" + mode + "'"));
+  });
+  renderLog();
+}
+
+function renderLog() {
+  const el=document.getElementById('log-list');
+  if(!bookings.length){el.innerHTML='<div class="log-empty">no bookings yet</div>';return;}
+  const t=today(),ns=toSlot(t,nowAMPM());
+  const sorted=[...bookings].sort((a,b)=>{
+    if(logSort==='date-desc') return toSlot(b.dateOut,b.slotOut)-toSlot(a.dateOut,a.slotOut);
+    if(logSort==='date-asc')  return toSlot(a.dateOut,a.slotOut)-toSlot(b.dateOut,b.slotOut);
+    if(logSort==='machine')   return (a.machineId||'').localeCompare(b.machineId||'');
+    if(logSort==='engineer')  return (a.engineer||'').localeCompare(b.engineer||'');
+    if(logSort==='purpose')   return (a.purpose||'').localeCompare(b.purpose||'');
+    return 0;
+  });
+  el.innerHTML=sorted.map(b=>{
+    const m=getMachines().find(x=>x.id===b.machineId)||{name:b.machineId};
+    const isActive=overlap(ns,ns,toSlot(b.dateOut,b.slotOut),toSlot(b.dateReturn,b.slotReturn));
+    return `<div class="log-row">
+      <div class="log-dot" style="background:${PC[b.purpose]||'#888'}"></div>
+      <div>
+        <div class="log-machine">${m.name} <span style="font-weight:400;opacity:.4;font-size:10px">→ ${b.hospital}</span></div>
+        <div class="log-detail">${b.engineer} · ${b.purpose}${b.notes?' · '+b.notes:''}</div>
+        ${isActive?'<div class="log-active-badge">● Active now</div>':''}
+      </div>
+      <div>
+        <div class="log-dates">${b.dateOut} ${b.slotOut}<br>→ ${b.dateReturn} ${b.slotReturn}</div>
+        <button class="log-del" onclick="delBooking('${b.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  BOOKING FORM
+// ══════════════════════════════════════════════
+function slotToggle(dateId,slotId,def) {
+  const am=def==='AM';
+  return `<div class="slot-row">
+    <input type="date" id="${dateId}" onchange="liveCheck()">
+    <div class="slot-toggle">
+      <button class="sbtn${am?' active-am':''}" id="${slotId}-AM" onclick="setSlot('${slotId}','AM')">AM</button>
+      <button class="sbtn${!am?' active-pm':''}" id="${slotId}-PM" onclick="setSlot('${slotId}','PM')">PM</button>
+    </div></div>`;
+}
+function setSlot(id,v){
+  document.getElementById(id+'-AM').className='sbtn'+(v==='AM'?' active-am':'');
+  document.getElementById(id+'-PM').className='sbtn'+(v==='PM'?' active-pm':'');
+  liveCheck();
+}
+function getSlot(id){return document.getElementById(id+'-AM').classList.contains('active-am')?'AM':'PM';}
+
+function hospHTML() {
+  return `<div class="hosp-wrap">
+    <input type="text" id="hosp-search" placeholder="Search hospital…" autocomplete="off"
+      oninput="filterHosp()" onfocus="openHosp()" onblur="setTimeout(closeHosp,200)" value="${hospVal}">
+    <div class="hosp-dropdown" id="hosp-dd"></div>
+  </div>`;
+}
+function filterHosp(){
+  hospVal=document.getElementById('hosp-search').value;
+  renderHospOpts(hospVal.toLowerCase());openHosp();
+}
+function renderHospOpts(q=''){
+  const dd=document.getElementById('hosp-dd');if(!dd)return;
+  const list=getHospitals().filter(h=>h.toLowerCase().includes(q));
+  dd.innerHTML=list.length?list.map(h=>`<div class="hosp-opt${h===hospVal?' sel':''}" onmousedown="selectHosp('${h.replace(/'/g,"\\'")}')">${h}</div>`).join('')
+    :'<div class="hosp-opt" style="color:var(--ink3);cursor:default">No results</div>';
+}
+function openHosp(){const dd=document.getElementById('hosp-dd');if(!dd)return;renderHospOpts((document.getElementById('hosp-search')?.value||'').toLowerCase());dd.classList.add('open');}
+function closeHosp(){const dd=document.getElementById('hosp-dd');if(dd)dd.classList.remove('open');}
+function selectHosp(h){hospVal=h;const s=document.getElementById('hosp-search');if(s)s.value=h;closeHosp();liveCheck();}
+
+function renderForm() {
+  const fp=document.getElementById('form-panel');
+  if(!sel){
+    fp.innerHTML=`<div class="fp-empty">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Select any machine on the left to create a new booking.</div>`;
+    return;
+  }
+  const m=getMachines().find(x=>x.id===sel),busy=bookedNow(m.id),t=today(),ap=nowAMPM();
+  fp.innerHTML=`
+    <div class="fp-title">New booking</div>
+    <div class="fp-sub">${m.name} · ${m.serial}${busy?` &nbsp;<span style="font-size:11px;background:#fdf0ee;color:#c0392b;padding:2px 8px;border-radius:5px;font-weight:600">Currently out</span>`:''}</div>
+    <div class="banner" id="bann"></div>
+    <div class="fg-row">
+      <div class="fg"><label>Engineer</label><select id="f-eng">${engineers.map(e=>`<option>${e}</option>`).join('')}</select></div>
+      <div class="fg"><label>Purpose</label><select id="f-pur">${PURPOSES.map(p=>`<option>${p}</option>`).join('')}</select></div>
+    </div>
+    <div class="fg"><label>Date out &amp; slot</label>${slotToggle('f-dout','s-out',ap)}</div>
+    <div class="fg"><label>Expected return &amp; slot</label>${slotToggle('f-dret','s-ret',ap)}</div>
+    <div class="fg"><label>Hospital</label>${hospHTML()}</div>
+    <div class="fg"><label>Notes</label><textarea id="f-notes" placeholder="Optional remarks…"></textarea></div>
+    <div class="fp-actions">
+      <button class="btn-ghost" onclick="cancel()">Cancel</button>
+      <button class="btn-confirm" id="btn-ok" onclick="submitBooking()" disabled>Confirm booking</button>
+    </div>`;
+  document.getElementById('f-dout').value=t;document.getElementById('f-dout').min=t;
+  document.getElementById('f-dret').value=t;document.getElementById('f-dret').min=t;
+  liveCheck();
+}
+
+function liveCheck() {
+  const dOut=document.getElementById('f-dout')?.value,dRet=document.getElementById('f-dret')?.value;
+  const bann=document.getElementById('bann'),btn=document.getElementById('btn-ok');
+  if(!dOut||!dRet||!bann||!btn)return;
+  const sOut=getSlot('s-out'),sRet=getSlot('s-ret'),s1=toSlot(dOut,sOut),e1=toSlot(dRet,sRet);
+  if(e1<s1){showBanner('err','Return slot must be same or later than date out.');btn.disabled=true;btn.className='btn-confirm';return;}
+  if(hasConflict(sel,dOut,sOut,dRet,sRet,null)){
+    const cb=bookings.find(b=>{if(b.machineId!==sel)return false;return overlap(s1,e1,toSlot(b.dateOut,b.slotOut),toSlot(b.dateReturn,b.slotReturn));});
+    showBanner('err',`Conflict with ${cb.engineer}'s booking: ${cb.dateOut} ${cb.slotOut} → ${cb.dateReturn} ${cb.slotReturn}.`);
+    btn.disabled=true;btn.className='btn-confirm';
+  } else {
+    showBanner('ok','No conflicts — slot is available. Ready to confirm.');
+    btn.disabled=false;btn.className='btn-confirm ready';
+  }
+}
+function showBanner(type,msg){const b=document.getElementById('bann');b.className='banner '+type;b.textContent=msg;b.style.display='block';}
+function cancel(){sel=null;hospVal='';renderMachines();renderForm();}
+
+async function submitBooking() {
+  const dOut=document.getElementById('f-dout').value,dRet=document.getElementById('f-dret').value;
+  const sOut=getSlot('s-out'),sRet=getSlot('s-ret');
+  const hosp=hospVal.trim(),eng=document.getElementById('f-eng').value;
+  const pur=document.getElementById('f-pur').value,notes=document.getElementById('f-notes').value;
+  if(!hosp){toast('Please select a hospital');return;}
+  if(!getHospitals().includes(hosp)){toast('Please select a hospital from the list');return;}
+  if(hasConflict(sel,dOut,sOut,dRet,sRet,null)){toast('Conflict detected');return;}
+  const booking={id:'b'+Date.now(),machineId:sel,engineer:eng,hospital:hosp,purpose:pur,dateOut:dOut,slotOut:sOut,dateReturn:dRet,slotReturn:sRet,notes};
+  sel=null;hospVal='';
+  toast('Saving to Google Drive…');
+  await apiCall({action:'add',booking:encodeURIComponent(JSON.stringify(booking))});
+  toast('Booking confirmed and synced!');
+}
+
+async function delBooking(id) {
+  if(!confirm('Delete this booking?'))return;
+  await apiCall({action:'delete',id});
+  toast('Booking removed');
+}
+
+// ══════════════════════════════════════════════
+//  CALENDAR VIEW
+// ══════════════════════════════════════════════
+let calSelectedDate = null;
+
+function renderCalendar() {
+  document.getElementById('cal-title').textContent = `${MONTHS[calMonth]} ${calYear}`;
+  const firstDow  = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const todayStr  = today();
+
+  let html = DOWS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  // Leading empty cells
+  for(let i=0;i<firstDow;i++) html += `<div class="cal-cell cal-empty"></div>`;
+
+  for(let d=1;d<=daysInMonth;d++){
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday    = ds === todayStr;
+    const isSelected = ds === calSelectedDate;
+
+    // Build two bar-rows: top = 612A + 612C, bottom = 615A + 615B
+    // Each bar = AM+PM combined: both free=green, one=orange, both=red
+    const machines = getMachines();
+    const barRows = [[machines[0],machines[1]],[machines[2],machines[3]]];
+    let bars = '';
+    barRows.forEach(row => {
+      bars += `<div class="cal-bar-row">`;
+      row.forEach(m => {
+        const amB = isSlotBooked(m.id,ds,'AM'), pmB = isSlotBooked(m.id,ds,'PM');
+        const cls = (amB && pmB) ? 'bar-busy' : (amB || pmB) ? 'bar-partial' : 'bar-free';
+        bars += `<div class="cal-bar ${cls}" title="${m.name}: AM ${amB?'Booked':'Free'} / PM ${pmB?'Booked':'Free'}"></div>`;
+      });
+      bars += `</div>`;
+    });
+
+    html += `<div class="cal-cell${isToday?' cal-today':''}${isSelected?' cal-selected':''}" onclick="selectCalDay('${ds}')">
+      <div class="cal-day-num">${d}</div>
+      ${bars}
+    </div>`;
+  }
+
+  // Trailing empty cells to complete the grid
+  const totalCells = firstDow + daysInMonth;
+  const remainder  = totalCells % 7;
+  if (remainder > 0) {
+    for(let i=0;i<7-remainder;i++) html += `<div class="cal-cell cal-empty"></div>`;
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+  if (calSelectedDate) renderDayDetail(calSelectedDate);
+}
+
+function selectCalDay(ds) {
+  calSelectedDate = (calSelectedDate === ds) ? null : ds;
+  renderCalendar();
+  if (calSelectedDate) renderDayDetail(calSelectedDate);
+  else document.getElementById('cal-detail').style.display = 'none';
+}
+
+function renderDayDetail(ds) {
+  const detail = document.getElementById('cal-detail');
+  const date   = new Date(ds + 'T00:00:00');
+  const label  = date.toLocaleDateString('en-MY', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  let html = `<div class="cal-detail-title">${label}</div>`;
+  getMachines().forEach(m => {
+    const amB = isSlotBooked(m.id,ds,'AM'), pmB = isSlotBooked(m.id,ds,'PM');
+    // Find who booked each slot
+    const amBooking = getSlotBooking(m.id,ds,'AM');
+    const pmBooking = getSlotBooking(m.id,ds,'PM');
+    const amText = amB && amBooking ? `${amBooking.engineer} (${amBooking.purpose})` : 'Available';
+    const pmText = pmB && pmBooking ? `${pmBooking.engineer} (${pmBooking.purpose})` : 'Available';
+    html += `<div class="cal-detail-row">
+      <div class="cal-detail-machine">${m.name}</div>
+      <div class="cal-detail-slots">
+        <span class="cal-slot-line ${amB?'cal-slot-busy':'cal-slot-free'}">AM: ${amText}</span>
+        <span class="cal-slot-line ${pmB?'cal-slot-busy':'cal-slot-free'}">PM: ${pmText}</span>
+      </div>
+    </div>`;
+  });
+
+  detail.innerHTML = html;
+  detail.style.display = '';
+}
+
+function getSlotBooking(mid, dateStr, ampm) {
+  const sl = toSlot(dateStr, ampm);
+  return bookings.find(b => b.machineId===mid && overlap(sl,sl,toSlot(b.dateOut,b.slotOut),toSlot(b.dateReturn,b.slotReturn)));
+}
+
+function prevMonth(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}calSelectedDate=null;document.getElementById('cal-detail').style.display='none';renderCalendar();}
+function nextMonth(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}calSelectedDate=null;document.getElementById('cal-detail').style.display='none';renderCalendar();}
+
+// ══════════════════════════════════════════════
+//  SETTINGS VIEW
+// ══════════════════════════════════════════════
+function switchSettingsTab(tab) {
+  settingsTabActive = tab;
+  document.querySelectorAll('.stab').forEach((t,i)=>{
+    t.classList.toggle('active',['hospitals','engineers','calibration'][i]===tab);
+  });
+  renderSettingsContent();
+}
+
+function renderSettings() {
+  renderSettingsContent();
+}
+
+function renderSettingsContent() {
+  const el = document.getElementById('settings-content');
+  if(settingsTabActive==='hospitals') el.innerHTML = renderHospitalsTab();
+  else if(settingsTabActive==='engineers') el.innerHTML = renderEngineersTab();
+  else el.innerHTML = renderCalibrationTab();
+}
+
+function renderHospitalsTab() {
+  const listItems =
+    `<div class="settings-item pinned">
+        <span class="settings-item-name">N/A</span>
+        <span class="pin-badge">Always shown</span>
+     </div>` +
+    hospitals.map(h=>
+      `<div class="settings-item">
+        <span class="settings-item-name">${h}</span>
+        <button class="item-del" onclick="removeHospital(${JSON.stringify(h)})">✕</button>
+       </div>`
+    ).join('');
+  return `
+    <div class="settings-panel-title">Hospital list</div>
+    <div class="settings-panel-sub">Add or remove hospitals. N/A is always available and cannot be removed.</div>
+    <div class="settings-list">${listItems}</div>
+    <div class="settings-add">
+      <input type="text" id="add-hosp-input" placeholder="New hospital name…" onkeydown="if(event.key==='Enter')addHospital()">
+      <button class="btn-add" onclick="addHospital()">Add</button>
+    </div>
+    <div class="settings-save-row">
+      <button class="btn-save-settings" onclick="saveSettingsToDrive()">Save to Google Drive</button>
+      <span class="settings-saved-msg" id="settings-saved-msg">✓ Saved</span>
+    </div>`;
+}
+
+function renderEngineersTab() {
+  const listItems = engineers.map(e=>
+    `<div class="settings-item">
+      <span class="settings-item-name">${e}</span>
+      <button class="item-del" onclick="removeEngineer(${JSON.stringify(e)})">✕</button>
+     </div>`
+  ).join('');
+  return `
+    <div class="settings-panel-title">Engineer list</div>
+    <div class="settings-panel-sub">Add or remove engineer names shown in the booking form.</div>
+    <div class="settings-list">${listItems}</div>
+    <div class="settings-add">
+      <input type="text" id="add-eng-input" placeholder="New engineer name…" onkeydown="if(event.key==='Enter')addEngineer()">
+      <button class="btn-add" onclick="addEngineer()">Add</button>
+    </div>
+    <div class="settings-save-row">
+      <button class="btn-save-settings" onclick="saveSettingsToDrive()">Save to Google Drive</button>
+      <span class="settings-saved-msg" id="settings-saved-msg">✓ Saved</span>
+    </div>`;
+}
+
+function renderCalibrationTab() {
+  const today90 = new Date(); today90.setDate(today90.getDate()+90);
+  const cards = getMachines().map(m=>{
+    const calDate = m.cal ? new Date(m.cal) : null;
+    const isExpired = calDate && calDate < new Date();
+    const isSoon = calDate && !isExpired && calDate <= today90;
+    let calMsg = '';
+    if(isExpired) calMsg = `<div class="cal-expiry-warn">⚠ Calibration overdue</div>`;
+    else if(isSoon) calMsg = `<div class="cal-expiry-warn">⚠ Due within 90 days</div>`;
+    else if(calDate) calMsg = `<div class="cal-expiry-ok">✓ Calibration current</div>`;
+    return `<div class="cal-date-card">
+      <div class="cal-date-machine">${m.name}</div>
+      <div class="cal-date-serial">${m.serial}</div>
+      <input type="date" value="${m.cal||''}" onchange="updateCalDate('${m.id}',this.value)">
+      ${calMsg}
+    </div>`;
+  }).join('');
+  return `
+    <div class="settings-panel-title">Calibration due dates</div>
+    <div class="settings-panel-sub">Set the next calibration due date for each EST unit.</div>
+    <div class="cal-dates-grid">${cards}</div>
+    <div class="settings-save-row">
+      <button class="btn-save-settings" onclick="saveSettingsToDrive()">Save to Google Drive</button>
+      <span class="settings-saved-msg" id="settings-saved-msg">✓ Saved</span>
+    </div>`;
+}
+
+// Settings CRUD
+function addHospital() {
+  const input = document.getElementById('add-hosp-input');
+  const val = input.value.trim();
+  if(!val){toast('Enter a hospital name');return;}
+  if(val==='N/A'||hospitals.includes(val)){toast('Already in list');return;}
+  hospitals.push(val);
+  hospitals.sort((a,b)=>a.localeCompare(b,'en',{sensitivity:'base'}));
+  input.value='';
+  renderSettingsContent();
+}
+function removeHospital(h) {
+  if(!confirm(`Remove "${h}" from the hospital list?`))return;
+  hospitals = hospitals.filter(x=>x!==h);
+  renderSettingsContent();
+}
+function addEngineer() {
+  const input = document.getElementById('add-eng-input');
+  const val = input.value.trim();
+  if(!val){toast('Enter an engineer name');return;}
+  if(engineers.includes(val)){toast('Already in list');return;}
+  engineers.push(val);
+  engineers.sort((a,b)=>a.localeCompare(b,'en',{sensitivity:'base'}));
+  input.value='';
+  renderSettingsContent();
+}
+function removeEngineer(e) {
+  if(!confirm(`Remove "${e}" from the engineer list?`))return;
+  engineers = engineers.filter(x=>x!==e);
+  renderSettingsContent();
+}
+function updateCalDate(id, val) {
+  machineCal[id] = val;
+  renderSettingsContent();
+}
+
+// ══════════════════════════════════════════════
+//  UTILITY
+// ══════════════════════════════════════════════
+function renderAll(){renderStats();renderMachines();renderForm();}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+init();
+</script>
+</body>
+</html>
