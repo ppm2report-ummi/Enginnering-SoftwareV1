@@ -245,6 +245,19 @@
     white-space:nowrap;
     width:1%;
   }
+
+  /* Allow long Instrument(s)/Equipment(s) text to wrap automatically */
+  table.cert-table td.lbl.equipment-cell{
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+
+  #p_equipmentGroup{
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
   table.cert-table td.certify{
     text-align:center;
     font-weight:700;
@@ -602,7 +615,7 @@
           <td colspan="2" id="p_fax" contenteditable="true" data-sync="fax"></td>
         </tr>
         <tr>
-          <td class="lbl" colspan="3">Instrument(s)/Equipment(s): <span id="p_equipmentGroup" contenteditable="true" data-sync="equipmentGroup"></span></td>
+          <td class="lbl equipment-cell" colspan="3">Instrument(s)/Equipment(s): <span id="p_equipmentGroup" contenteditable="true" data-sync="equipmentGroup"></span></td>
           <td class="lbl" colspan="3">Manufacturer : <span id="p_manufacturer" contenteditable="true" data-sync="manufacturer"></span></td>
         </tr>
         <tr>
