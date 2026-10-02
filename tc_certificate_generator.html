@@ -246,17 +246,22 @@
     width:1%;
   }
 
-  /* Allow long Instrument(s)/Equipment(s) text to wrap automatically */
+  /* Long Instrument(s)/Equipment(s) text must wrap inside its cell.
+     The label stays on one line while the entered value can continue
+     onto additional lines without overlapping Manufacturer. */
   table.cert-table td.lbl.equipment-cell{
     white-space:normal;
     overflow-wrap:anywhere;
     word-break:break-word;
   }
-
+  table.cert-table td.lbl.equipment-cell .equipment-label{
+    white-space:nowrap;
+  }
   #p_equipmentGroup{
     white-space:normal;
     overflow-wrap:anywhere;
     word-break:break-word;
+    min-width:0;
   }
   table.cert-table td.certify{
     text-align:center;
@@ -584,6 +589,9 @@
       <div class="clearfix"></div>
 
       <table class="cert-table">
+        <colgroup>
+          <col style="width:12.35%"><col style="width:11.52%"><col style="width:23.32%"><col style="width:17.83%"><col style="width:17.49%"><col style="width:17.49%">
+        </colgroup>
         <tr>
           <td class="lbl" style="width:90px;">Hospital :</td>
           <td colspan="2" id="p_hospital" contenteditable="true" data-sync="hospital"></td>
@@ -615,8 +623,14 @@
           <td colspan="2" id="p_fax" contenteditable="true" data-sync="fax"></td>
         </tr>
         <tr>
-          <td class="lbl equipment-cell" colspan="3">Instrument(s)/Equipment(s): <span id="p_equipmentGroup" contenteditable="true" data-sync="equipmentGroup"></span></td>
-          <td class="lbl" colspan="3">Manufacturer : <span id="p_manufacturer" contenteditable="true" data-sync="manufacturer"></span></td>
+          <td class="lbl equipment-cell" colspan="3">
+            <span class="equipment-label">Instrument(s)/Equipment(s):</span>
+            <span id="p_equipmentGroup" contenteditable="true" data-sync="equipmentGroup"></span>
+          </td>
+          <td class="lbl" colspan="3">
+            Manufacturer :
+            <span id="p_manufacturer" contenteditable="true" data-sync="manufacturer"></span>
+          </td>
         </tr>
         <tr>
           <td class="certify" colspan="6">THIS IS TO CERTIFY THAT THE INSTRUMENT(S)/EQUIPMENT(S) BELOW HAS BEEN DELIVERED, INSTALLED AND COMMISSIONED ACCORDING TO SPECIFICATIONS</td>
@@ -947,8 +961,9 @@
       const batch = tr.querySelector('.i-batch').value;
       const qty = tr.querySelector('.i-qty').value;
       const warranty = tr.querySelector('.i-warranty').value;
+      const batchDisplay = batch.split(',').map(s=>s.trim()).filter(Boolean).join('\n');
       const row = document.createElement('tr');
-      row.innerHTML = `<td>${idx+1}</td><td contenteditable="true" data-item-idx="${idx}" data-item-field="model">${escapeHtml(model)}</td><td class="desc-cell" contenteditable="true" data-item-idx="${idx}" data-item-field="desc" data-multiline="1">${escapeHtml(desc)}</td><td contenteditable="true" data-item-idx="${idx}" data-item-field="batch">${escapeHtml(batch)}</td><td contenteditable="true" data-item-idx="${idx}" data-item-field="qty">${escapeHtml(qty)}</td><td>${escapeHtml(warranty)}</td>`;
+      row.innerHTML = `<td>${idx+1}</td><td contenteditable="true" data-item-idx="${idx}" data-item-field="model">${escapeHtml(model)}</td><td class="desc-cell" contenteditable="true" data-item-idx="${idx}" data-item-field="desc" data-multiline="1">${escapeHtml(desc)}</td><td style="white-space:pre-line;" contenteditable="true" data-item-idx="${idx}" data-item-field="batch" data-multiline="1">${escapeHtml(batchDisplay)}</td><td contenteditable="true" data-item-idx="${idx}" data-item-field="qty">${escapeHtml(qty)}</td><td>${escapeHtml(warranty)}</td>`;
       body.appendChild(row);
     });
 
