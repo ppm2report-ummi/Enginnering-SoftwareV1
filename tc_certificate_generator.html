@@ -423,6 +423,7 @@
       <div class="label">Reference No.</div>
       <div class="val" id="refDisplay">—</div>
       <div class="hint" id="refHint">Loading counter…</div>
+      <button class="add-row-btn" id="newCertBtn" type="button" style="margin-top:8px;background:#3a4a6b;">Start New Certificate</button>
       <details style="margin-top:8px;">
         <summary style="font-size:11px;color:#dbe3f5;cursor:pointer;">Google Sheet connection</summary>
         <label style="margin-top:6px;">Web App URL</label>
@@ -783,11 +784,15 @@
     if(!startIso) return;
     if(!(field.value === '' || field.value === lastAutoWarrantyEnd)) return;
 
-    const has1plus1 = Array.from(document.querySelectorAll('#itemsBody .i-warranty'))
-      .some(sel => sel.value === '1+1 YEAR');
+    const warrantySelects = Array.from(document.querySelectorAll('#itemsBody .i-warranty'));
+    const has1plus1 = warrantySelects.some(sel => sel.value === '1+1 YEAR');
+    const has1plus2 = warrantySelects.some(sel => sel.value === '1+2 YEAR');
     const lines = [ fmtDate(shiftDateISO(startIso, 1)) + ' for 1 Year Warranty Items' ];
     if(has1plus1){
       lines.push(fmtDate(shiftDateISO(startIso, 2)) + ' for 1+1 Years Warranty Item');
+    }
+    if(has1plus2){
+      lines.push(fmtDate(shiftDateISO(startIso, 3)) + ' for 1+2 Years Warranty Item');
     }
     const computed = lines.join('\n');
     field.value = computed;
@@ -795,7 +800,7 @@
   }
 
   function warrantyOptionsHtml(selected){
-    const opts = ['1 YEAR','1+1 YEAR'];
+    const opts = ['1 YEAR','1+1 YEAR','1+2 YEAR'];
     const sel = opts.includes(selected) ? selected : '1 YEAR';
     return opts.map(o=>`<option value="${o}"${o===sel?' selected':''}>${o}</option>`).join('');
   }
@@ -1570,6 +1575,38 @@
     }catch(e){
       statusEl.textContent = 'Could not load ' + ref + ': ' + e.message;
     }
+  });
+
+  // Leaving "edit mode" (editMode + issuedRef) stuck on after loading a
+  // certificate is what causes a later, unrelated certificate typed into the
+  // same tab to silently overwrite that loaded ref's row/PDF instead of
+  // getting its own new number. This button is the explicit way out of edit
+  // mode, and back into a clean "issue a new ref" state.
+  document.getElementById('newCertBtn').addEventListener('click', ()=>{
+    if(editMode || issuedRef){
+      const ok = confirm('Start a new, blank certificate?\n\nThis clears the form. If you were editing ' + (issuedRef || 'a certificate') + ' and haven\'t saved, your changes will be lost (the saved copy on the Sheet/Drive is untouched).');
+      if(!ok) return;
+    }
+    editMode = false;
+    issuedRef = null;
+    FIELD_IDS.forEach(id=>{ document.getElementById(id).value = ''; });
+    document.getElementById('remark1').checked = true;
+    document.getElementById('remark2').checked = true;
+    document.getElementById('itemsBody').innerHTML = '';
+    itemCounter = 0;
+    addItemRow({model:'', desc:'', batch:'', qty:'1', warranty:'1 YEAR'});
+    document.getElementById('loadRefInput').value = '';
+    document.getElementById('loadRefStatus').textContent = '';
+    document.getElementById('refDisplay').textContent = nextPreviewRef || '—';
+    document.getElementById('refHint').textContent = 'Not yet issued — this will reserve the next number when you print/save.';
+    document.getElementById('statusPill').textContent = 'Draft — ref not yet issued';
+    document.getElementById('statusPill').style.background = '';
+    document.getElementById('printBtn').textContent = 'Print / Save PDF';
+    document.getElementById('printBtn').disabled = false;
+    lastAutoWarrantyEnd = '';
+    loadCounterPreview();
+    render();
+    setStatus('Ready for a new certificate.');
   });
 
   async function issueOrSaveThenPrint(){
