@@ -192,6 +192,28 @@ table.report td.type-col{text-align:center;font-family:var(--sans);font-size:11p
 }
 
 footer{text-align:center;padding:24px;font-size:11.5px;color:#8a9598;}
+
+.rec-bar{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 6px;align-items:center;}
+.rec-bar input[type=search]{flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;font:inherit;}
+.rec-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;}
+.rec-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#5b6b6e;padding:8px 10px;border-bottom:2px solid var(--line);white-space:nowrap;}
+.rec-table td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;}
+.rec-sub{font-size:11px;color:#6b7a7d;margin-top:2px;max-width:260px;}
+.rec-files a{display:block;color:var(--teal);text-decoration:none;font-weight:500;white-space:nowrap;}
+.rec-files a:hover{text-decoration:underline;}
+.rec-actions{white-space:nowrap;}
+.rec-actions .btn{padding:6px 12px;font-size:12px;margin-right:4px;}
+.rec-del{color:#b3261e;}
+.drive-box{border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0 4px;background:#fbfaf6;}
+.drive-head{font-size:13px;color:var(--navy);}
+.drive-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:10px;background:#e3e3e0;color:#6b7a7d;margin-left:6px;}
+.drive-badge.on{background:var(--teal-light);color:var(--teal);}
+.drive-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.drive-row input{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px;}
+.drive-row input[type=password]{flex:0 1 220px;}
+.rec-drive{font-size:11px;margin-top:6px;color:#6b7a7d;}
+.rec-drive.ok{color:var(--teal);} .rec-drive.err{color:#b3261e;}
+.rec-files .rec-drive a{display:inline;font-weight:600;}
 </style>
 </head>
 <body>
@@ -201,7 +223,7 @@ footer{text-align:center;padding:24px;font-size:11.5px;color:#8a9598;}
     <h1>PPM Costing Generator</h1>
     <div class="sub">Karl Storz Equipment · Non-Comprehensive &amp; Comprehensive · Ummi Surgical Sdn Bhd</div>
   </div>
-  <div class="tag">PROTOTYPE · client-side only</div>
+  <div class="tag" id="recHdrBtn" style="cursor:pointer;">📁 Records (<span id="recHdrCount">0</span>)</div>
 </header>
 
 <main>
@@ -440,13 +462,43 @@ Electrical safety test</textarea>
 
   </div>
 
+  <!-- RECORDS -->
+  <div class="section-title" id="recordsSection"><span class="dot"></span> Records <span style="font-weight:400;color:#5b6b6e;font-size:12px;">(<span id="recCount">0</span> saved)</span></div>
+  <div class="step" style="margin-top:8px;">
+    <div class="step-body">
+      <div class="hint" style="margin-top:0;">Each costing is saved automatically when you press Generate (and refreshed when you export), together with the Non-Comprehensive PDF, Comprehensive PDF and the source quotation. A copy is always kept in this browser; with Google Drive sync on, it is also saved to your Drive. You can still use <b>Backup</b> as an extra safety copy.</div>
+      <div class="drive-box">
+        <div class="drive-head"><b>☁ Google Drive sync</b> <span class="drive-badge" id="driveBadge">OFF</span></div>
+        <div class="hint" style="margin:4px 0 10px;">Paste the Web app URL from your PPM Records Apps Script. Each costing (PDFs + a row in a Google Sheet) is then saved to your Google Drive automatically. The URL stays in this browser only.</div>
+        <div class="drive-row">
+          <input type="url" id="driveUrl" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false">
+          <input type="password" id="driveSecret" placeholder="Passcode (only if you set one)" autocomplete="off">
+          <button class="btn btn-primary" id="driveSaveBtn">Save &amp; test</button>
+        </div>
+        <div class="drive-row" style="margin-top:8px;">
+          <button class="btn btn-secondary" id="driveSyncAll">⬆ Upload records not yet in Drive</button>
+          <button class="btn btn-secondary" id="driveLoad">⬇ Load records from Drive</button>
+          <span id="driveLinks" class="hint" style="margin:0;"></span>
+        </div>
+        <div id="driveStatus" class="hint"></div>
+      </div>
+      <div class="rec-bar">
+        <input type="search" id="recSearch" placeholder="Search hospital, quotation ref, date…">
+        <button class="btn btn-secondary" id="recBackup">⬇ Backup records</button>
+        <label class="btn btn-secondary" style="margin:0;cursor:pointer;">⬆ Restore backup<input type="file" id="recRestoreInput" accept="application/json,.json" style="display:none;"></label>
+      </div>
+      <div id="recSaveStatus" class="hint"></div>
+      <div id="recList"></div>
+    </div>
+  </div>
+
 </main>
 
 <footer>Prototype tool · pricing logic derived from the Ummi Surgical PPM Costing workbook · verify figures before sending to a customer</footer>
 
 <script>
 
-const MODEL_MASTER = [["26702050", "DrillCut-X II Shaver Handpiece GYN", "FOC"], ["20161201", "LED Nova 150", "Charge"], ["11101 HDK", "HD Video Rhino-Laryngoscope, 3.7 mm", "FOC"], ["11102 CMK", "CMOS Video Rhino-Laryngoscope, 2.9mm", "FOC"], ["11102 CMM", "CMOS Video Rhino-Laryngoscope, 2.9mm", "Charge"], ["11272VSK", "Flexible Video Cystoscope HD-VIEW", "FOC"], ["11272VEK", "CMOS Video Cysto-Urethroscope", "FOC"], ["11278VSK", "Video Uretero-Renoscope FLEX-XC", "FOC"], ["11301 ABXK", "Flex.Intubat. Video Endoscope Set 3.0x51.5", "FOC"], ["11302 BDXK", "Flex.Intubat. Video Endoscope Set 4.0x65", "FOC"], ["11303 BNXK", "Flex.Intubat. Video Endoscope Set 5.5x65", "FOC"], ["20161401-1", "Power LED 175 SCB", "Charge"], ["26605BA", "TIPCAM®1 S 3D LAP", "FOC"], ["26606ACA", "TIPCAM®1 RUBINA 0°", "FOC"], ["26606BCA", "TIPCAM®1 RUBINA 30°", "FOC"], ["26701001-1", "UNIDRIVE® S III", "Charge"], ["28723001-1", "UNIDRIVE® S III Arthro", "Charge"], ["40701601-1", "UNIDRIVE® S III ENT SCB", "Charge"], ["40712035", "DrillCut-X II-35 Shaver", "FOC"], ["60914PKSK", "Vet. Videoendoscope PV-G 28-140, Set", "FOC"], ["8404ZX", "C Mac Monitor", "Charge"], ["8403XDK", "C-MAC® Pocket Monitor Set", "Charge"], ["EX3242-3D", "CuratOR 31.1\" 4K 3D Monitor", "FOC"], ["MS236WT", "23\" Color Touch Screen Monitor", "FOC"], ["PAX-324-C2B-NAS", "HD 24\" Medical Grade Monitor", "FOC"], ["PAX-327-C8A-HAS", "HD 27\" Medical Grade Monitor", "FOC"], ["PLA-800", "Plasma Surgery System Console", "Charge"], ["RP101S1", "TELE PACK+ VET", "Charge"], ["TC100", "Telecam C3", "Charge"], ["TC200EN", "IMAGE1 S CONNECT™", "Charge"], ["TC201EN", "IMAGE1 S CONNECT™ II", "Charge"], ["TC300", "IMAGE1 S H3-LINK", "Charge"], ["TC301", "IMAGE1 X Link", "Charge"], ["TC302", "IMAGE D3 Link", "Charge"], ["TC304", "IMAGE1 S 4U-LINK", "Charge"], ["TH100", "IMAGE1 S H3-Z Camera Head", "FOC"], ["TH102", "IMAGE1 S H3-Z FI Camera Head", "FOC"], ["TH104", "IMAGE1 S H3-ZA Camera Head", "FOC"], ["TH110", "IMAGE1 S HX Camera Head", "FOC"], ["TH111", "IMAGE1 S HX-P Pendulum Camera Head", "FOC"], ["TH112", "IMAGE1 S HX FI Camera Head", "FOC"], ["TH113", "IMAGE1 S HX-P FI  Camera Head", "FOC"], ["TH120", "IMAGE1 S 4U Camera Head", "FOC"], ["TH121", "IMAGE1 S 4U RUBINA Camera Head", "FOC"], ["TH130", "H1 Camera Head", "FOC"], ["TL300", "Power LED 300", "Charge"], ["TL400", "Power LED Rubina", "Charge"], ["TM220", "27\" FULL HD Monitor", "FOC"], ["TM330", "32\" 3D Monitor", "FOC"], ["TM343", "32\" 4K Monitor", "FOC"], ["TM350", "32\" 4K/3D Monitor", "FOC"], ["TM441", "43\" 4K Monitor", "FOC"], ["TM451", "55\" 4K Monitor", "FOC"], ["TP101", "Telepack +", "Charge"], ["UH400E", "AUTOCON® III 400", "Charge"], ["UI400S1", "ENDOFLATOR® 40 SCB", "Charge"], ["UI500S1", "ENDOFLATOR® 50 SCB", "Charge"], ["UM600", "Unidrive Select", "Charge"], ["UP220", "ENDOMAT® SELECT", "Charge"], ["WD300-EN", "AIDA Documentation System", "Charge"], ["WD310-EN", "AIDA C", "Charge"], ["WD350-EN", "AIDA Documentation System", "Charge"], ["WD360-EN", "AIDA Documentation System", "Charge"]];
+const MODEL_MASTER = [["26702050", "DrillCut-X II Shaver Handpiece GYN", "FOC"], ["20161201", "LED Nova 150", "Charge"], ["11101 HDK", "HD Video Rhino-Laryngoscope, 3.7 mm", "FOC"], ["11102 CMK", "CMOS Video Rhino-Laryngoscope, 2.9mm", "FOC"], ["11102 CMM", "CMOS Video Rhino-Laryngoscope, 2.9mm", "Charge"], ["11272VSK", "Flexible Video Cystoscope HD-VIEW", "FOC"], ["11272VEK", "CMOS Video Cysto-Urethroscope", "FOC"], ["11278VSK", "Video Uretero-Renoscope FLEX-XC", "FOC"], ["11301 ABXK", "Flex.Intubat. Video Endoscope Set 3.0x51.5", "FOC"], ["11302 BDXK", "Flex.Intubat. Video Endoscope Set 4.0x65", "FOC"], ["11303 BNXK", "Flex.Intubat. Video Endoscope Set 5.5x65", "FOC"], ["20161401-1", "Power LED 175 SCB", "Charge"], ["26605BA", "TIPCAM®1 S 3D LAP", "FOC"], ["26606ACA", "TIPCAM®1 RUBINA 0°", "FOC"], ["26606BCA", "TIPCAM®1 RUBINA 30°", "FOC"], ["26701001-1", "UNIDRIVE® S III", "Charge"], ["28723001-1", "UNIDRIVE® S III Arthro", "Charge"], ["40701601-1", "UNIDRIVE® S III ENT SCB", "Charge"], ["40712035", "DrillCut-X II-35 Shaver", "FOC"], ["60914PKSK", "Vet. Videoendoscope PV-G 28-140, Set", "FOC"], ["8404ZX", "C Mac Monitor", "Charge"], ["8403XDK", "C-MAC® Pocket Monitor Set", "Charge"], ["EX3242-3D", "CuratOR 31.1\" 4K 3D Monitor", "FOC"], ["MS236WT", "23\" Color Touch Screen Monitor", "FOC"], ["PAX-324-C2B-NAS", "HD 24\" Medical Grade Monitor", "FOC"], ["PAX-327-C8A-HAS", "HD 27\" Medical Grade Monitor", "FOC"], ["PLA-800", "Plasma Surgery System Console", "Charge"], ["RP101S1", "TELE PACK+ VET", "Charge"], ["TC100", "Telecam C3", "Charge"], ["TC200EN", "IMAGE1 S CONNECT™", "Charge"], ["TC201EN", "IMAGE1 S CONNECT™ II", "Charge"], ["TC300", "IMAGE1 S H3-LINK", "Charge"], ["TC301", "IMAGE1 X Link", "Charge"], ["TC302", "IMAGE D3 Link", "Charge"], ["TC304", "IMAGE1 S 4U-LINK", "Charge"], ["TH100", "IMAGE1 S H3-Z Camera Head", "FOC"], ["TH102", "IMAGE1 S H3-Z FI Camera Head", "FOC"], ["TH104", "IMAGE1 S H3-ZA Camera Head", "FOC"], ["TH110", "IMAGE1 S HX Camera Head", "FOC"], ["TH111", "IMAGE1 S HX-P Pendulum Camera Head", "FOC"], ["TH112", "IMAGE1 S HX FI Camera Head", "FOC"], ["TH113", "IMAGE1 S HX-P FI  Camera Head", "FOC"], ["TH120", "IMAGE1 S 4U Camera Head", "FOC"], ["TH121", "IMAGE1 S 4U RUBINA Camera Head", "FOC"], ["TH130", "H1 Camera Head", "FOC"], ["TL300", "Power LED 300", "Charge"], ["TL400", "Power LED Rubina", "Charge"], ["TM220", "27\" FULL HD Monitor", "FOC"], ["TM330", "32\" 3D Monitor", "FOC"], ["TM343", "32\" 4K Monitor", "FOC"], ["TM350", "32\" 4K/3D Monitor", "FOC"], ["TM441", "43\" 4K Monitor", "FOC"], ["TP101", "Telepack +", "Charge"], ["UH400E", "AUTOCON® III 400", "Charge"], ["UI400S1", "ENDOFLATOR® 40 SCB", "Charge"], ["UI500S1", "ENDOFLATOR® 50 SCB", "Charge"], ["UM600", "Unidrive Select", "Charge"], ["UP220", "ENDOMAT® SELECT", "Charge"], ["WD300-EN", "AIDA Documentation System", "Charge"], ["WD310-EN", "AIDA C", "Charge"], ["WD350-EN", "AIDA Documentation System", "Charge"], ["WD360-EN", "AIDA Documentation System", "Charge"]];
 const HOSPITAL_MASTER = [["Adventist Hospital", 800], ["Alpha Specialist Centre", 500], ["ALTY Orthopeadic Hospital", 500], ["Anson Bay Medical Centre", 600], ["Ara Damansara Medical Centre (ADMC)", 500], ["ASSC Pusat Perubatan Universiti Kebangsaan Malaysia (PPUKM)", 500], ["Aurelius Hospital Alor Setar", 800], ["Aurelius Hospital Nilai", 500], ["Aurelius Hospital Pahang", 850], ["AVISENA Specialist Hospital", 500], ["AVISENA W&C Specialist Hospital", 500], ["Bagan Specialist Centre", 800], ["Beacon Hospital Sdn Bhd", 500], ["Bintulu Medical Centre", 800], ["Borneo Medical Centre - Kuching", 800], ["Borneo Medical Centre - Miri", 800], ["Bukit Tinggi MC (Manipal Hospital Klang)", 500], ["Cardiac Vascular Sentral KL (CVSKL)", 500], ["CENGILD G.I. Medical Centre", 500], ["Chuokee Medical Supplies Sdn Bhd", 800], ["Clinic ENT Tan (Perak)", 600], ["Columbia Asia - Batu Kawan", 800], ["Columbia Asia - Bukit Jalil", 500], ["Columbia Asia - Bukit Rimau", 500], ["Columbia Asia - Cheras", 500], ["Columbia Asia - Iskandar Puteri", 650], ["Columbia Asia - Klang", 500], ["Columbia Asia - Petaling Jaya", 500], ["Columbia Asia - Puchong", 500], ["Columbia Asia - Seremban", 500], ["Columbia Asia - Setapak", 500], ["Columbia Asia - Taiping", 600], ["Columbia Asia - Tebrau", 650], ["Columbia Asia Hospital Bintulu", 800], ["Columbia Asia Hospital Miri", 800], ["Darul Makmur Medical Centre (DMMC) Kuantan", 850], ["Endocrine Institute Hospital Putrajaya", 500], ["Gasing Veterinary Hospital", 500], ["Genesis IVF & Women's Specialist Centre", 800], ["Georgetown Specialist Hospital", 800], ["Gleneagles - Kota Kinabalu", 950], ["Gleneagles - Kuala Lumpur", 650], ["Gleneagles - Penang", 950], ["Gleneagles Medini", 800], ["Global Doctors Hospital", 500], ["Goh & Tan Veterinary", 500], ["HAT Tuanku Mizan", 500], ["HAT94 Terendak", 600], ["HAT96 Lumut", 600], ["Hospital Alor Gajah", 600], ["Hospital Al-Sultan Abdullah (UiTM Puncak Alam)", 500], ["Hospital Ampang", 500], ["Hospital Assunta", 500], ["Hospital Banting", 500], ["Hospital Batu Gajah", 600], ["Hospital Beaufort", 800], ["Hospital Bintulu", 800], ["Hospital Bukit Mertajam", 800], ["Hospital Cyberjaya", 500], ["Hospital Duchess of Kent (HDOK)", 800], ["Hospital Enche' Besar Hajjah Khalsom (Hospital Kluang)", 650], ["Hospital Fatimah", 600], ["Hospital Islam Az-Zahrah", 500], ["Hospital Kemaman", 850], ["Hospital Keningau", 800], ["Hospital Kepala Batas", 800], ["Hospital Kuala Krai", 850], ["Hospital Kuala Lumpur (HKL)", 500], ["Hospital Kulim", 800], ["Hospital Labuan", 800], ["Hospital Lahad Datu", 800], ["Hospital Langkawi", 800], ["Hospital Melaka", 600], ["Hospital Mersing", 650], ["Hospital Miri", 800], ["Hospital Pakar Al Islam", 500], ["Hospital Pakar An-Nur", 500], ["Hospital Pakar Kanak-Kanak, HPKK", 500], ["Hospital Pakar Metro", 800], ["Hospital Pakar Sultanah Fatimah (HPSF)", 650], ["Hospital Pekan", 850], ["Hospital Pengajar Universiti Sultan Zainal Abidin (Unisza)", 850], ["Hospital Picaso (IOC)", 500], ["Hospital Pulau Pinang (HPP)", 800], ["Hospital Pusrawi Sdn Bhd", 500], ["Hospital Putrajaya", 500], ["Hospital Queen Elizabeth (HQE)", 800], ["Hospital Queen Elizabeth II (HQE2)", 800], ["Hospital Raja Perempuan Zainab II (HRPZ)", 850], ["Hospital Raja Permaisuri Bainun (HRPB)", 600], ["Hospital Sarikei", 800], ["Hospital Seberang Jaya", 800], ["Hospital Segamat", 650], ["Hospital Selayang", 500], ["Hospital Seri Botani", 600], ["Hospital Seri Manjung", 600], ["Hospital Shah Alam", 500], ["Hospital Sibu", 800], ["Hospital Slim River", 600], ["Hospital Sri Aman 2", 800], ["Hospital Sultan Abdul Aziz Shah, UPM", 500], ["Hospital Sultan Abdul Halim", 800], ["Hospital Sultan Haji Ahmad Shah (HOSHAS)", 850], ["Hospital Sultan Idris Shah, Serdang", 500], ["Hospital Sultan Ismail (HSI)", 650], ["Hospital Sultanah Aminah (HSA)", 650], ["Hospital Sultanah Bahiyah", 800], ["Hospital Sultanah Nora Ismail (HSNI)", 650], ["Hospital Sultanah Nur Zahirah (HSNZ)", 850], ["Hospital Sungai Buloh", 500], ["Hospital Taiping", 600], ["Hospital Tanah Merah", 850], ["Hospital Tanjung Karang", 500], ["Hospital Tawau", 800], ["Hospital Teluk Intan", 600], ["Hospital Temerloh", 850], ["Hospital Tengku Ampuan Afzan (HTAA)", 850], ["Hospital Tengku Ampuan Rahimah (HTAR)", 500], ["Hospital Tuanku Ampuan Najihah, Kuala Pilah", 500], ["Hospital Tuanku Fauziah", 800], ["Hospital Tuanku Jaafar, Seremban (HTJS)", 500], ["Hospital Tung Shin", 500], ["Hospital Tunku Azizah (HWKK HKL)", 500], ["Hospital UMRA", 500], ["Hospital Umum Sarawak", 800], ["Hospital Universiti Sains Malaysia (HUSM)", 850], ["Hospital Wanita & Kanak-Kanak (HWKK) Likas", 800], ["IHeal Medical Services S/B", 500], ["IIUM Education and Cultural", 850], ["IIUM Medical Centre", 850], ["IIUM Medical Specialist Centre", 850], ["Institut Jantung Negara (IJN)", 500], ["Institut Kanser Negara (IKN)", 500], ["Island Hospital", 950], ["Jesselton Medical Centre Sdn Bhd", 800], ["Kedah Medical Centre", 800], ["Kek Lok Si Charitable Medical Centre", 800], ["Kelana Jaya Medical Centre", 500], ["Keliman Equip Trading & Services", 800], ["Kempas Medical Centre", 650], ["Kensington Green Specialist Centre", 650], ["Kidzsurgeon Sdn Bhd", 500], ["Kinabalu Hearing Aid Centre Sdn Bhd", 800], ["Kinta Medical Centre", 800], ["Klinik Yasmin", 600], ["KMI Tawau", 800], ["Kota Bharu Medical Centre", 850], ["KPJ Ambulatory Care Centre", 500], ["KPJ Ampang Puteri Specialist Hospital", 500], ["KPJ Bandar Dato' Onn Specialist Hospital", 650], ["KPJ Bandar Maharani Specialist Hospital", 650], ["KPJ Batu Pahat Specialist Hospital", 650], ["KPJ Damai Specialist Hospital", 800], ["KPJ Damansara Specialist Hospital", 500], ["KPJ Damansara Specialist Hospital 2 (DSH2)", 500], ["KPJ Ipoh Specialist Hospital", 600], ["KPJ Johor Specialist Hospital", 650], ["KPJ Kajang Specialist Hospital", 500], ["KPJ Klang Specialist Hospital", 500], ["KPJ Kluang Specialist Hospital", 650], ["KPJ Kuching Specialist Hospital", 800], ["KPJ Miri Specialist Hospital", 800], ["KPJ Pahang Specialist Hospital", 850], ["KPJ Pasir Gudang Specialist Hospital", 650], ["KPJ Penang Specialist Hosp", 800], ["KPJ Perdana Specialist Hospital", 850], ["KPJ Perlis Specialist Hospital Sdn Bhd", 800], ["KPJ Puteri Specialist Hospital", 650], ["KPJ Rawang Specialist Hospital", 500], ["KPJ Sabah Specialist Hospital", 800], ["KPJ Selangor Specialist Hospital Sdn Bhd", 500], ["KPJ Sentosa Medical Centre Sdn Bhd", 500], ["KPJ Seremban Specialist Hospital", 500], ["KPJ Sibu Specialist Medical Centre", 800], ["KPJ Sri Manjung Specialist Centre", 600], ["KPJ Taiping Medical Centre", 600], ["KPJ Tawakkal Specialist Hospital", 500], ["Kuala Lumpur Sports Medicine Centre", 500], ["Kuala Terengganu Specialist Hospital (KTSH)", 850], ["Kuantan Medical Centre", 850], ["Lam & Koh Urology Association Sdn Bhd", 500], ["Lam Wah Ee Hospital", 800], ["Loh Guan Lye", 800], ["Lourdes Medical Centre", 500], ["Mahkota Medical Centre", 600], ["Mahsa Hospital", 500], ["Mawar Medical Centre", 500], ["Mediquip", 500], ["MEDSYN SDN BHD", 500], ["Metro IVF Puchong", 500], ["Mount Miriam Cancer Hospital", 800], ["MSU Medical Centre", 500], ["Nilai Medical Centre", 500], ["Normah Medical Specialist Centre", 800], ["NSCMH Specialist Hospital", 500], ["Oriental Melaka Straits Medical Centre", 600], ["Pantai Hospital Ampang", 650], ["Pantai Hospital Ayer Keroh", 750], ["Pantai Hospital Batu Pahat", 800], ["Pantai Hospital Cheras", 650], ["Pantai Hospital Ipoh (Paloh Medical Centre Sdn Bhd)", 750], ["Pantai Hospital Klang", 650], ["Pantai Hospital Kuala Lumpur", 650], ["Pantai Hospital Laguna Merbok", 950], ["Pantai Hospital Manjung", 750], ["Pantai Hospital Penang", 950], ["Pantai Hospital Sungai Petani", 950], ["ParkCity Medical Centre", 500], ["Perak Community Specialist Hospital (PCSH)", 600], ["Perak Turf Club", 600], ["Prince Court Medical Centre (PCMC)", 650], ["Pusat Jantung Sarawak", 800], ["Pusat Perubatan Universiti Kebangsaan Malaysia (PPUKM)", 500], ["Pusat Perubatan Universiti Malaya (PPUM)", 500], ["Putra Batu Pahat", 650], ["Putra Hospital (Melaka) Sdn Bhd", 600], ["Putra Medical Centre-Kedah", 800], ["Putra Specialist Hospital Kajang", 500], ["Rafflesia Medical Centre Sdn Bhd", 800], ["Regency Specialist Hospital Sdn Bhd", 650], ["Rejang Medical Centre", 800], ["SALAM Senawang Specialist Hospital", 500], ["SALAM Specialist Hospital Kuala Terengganu", 850], ["Segamat Specialist Hospital Sdn Bhd", 650], ["Selangor Turf Club", 500], ["Senawang Indah Medical Centre Sdn Bhd", 500], ["Sentosa Specialist Klang", 500], ["Serveco Sdn Bhd (c/o: HPKK, UKM)", 500], ["Sri Kota Specialist Medical Centre", 500], ["SSH Medicare Sdn Bhd", 500], ["Sterile Services Sdn Bhd", 500], ["Subang ENT Specialist Clinic", 500], ["Subang Jaya Medical Centre (SJMC)", 500], ["Sungai Long Medical Centre Sdn Bhd", 500], ["Sunmed Velocity Sdn Bhd", 500], ["Sunway Medical Centre Ipoh", 600], ["Sunway Medical Centre Penang Sdn Bhd", 800], ["Sunway Medical Centre Sdn Bhd", 500], ["Sunway Specialist Centre Damansara", 500], ["Taman Desa Medical Centre", 500], ["Tawau Specialist Hospital", 800], ["Tawau Specialist Medical Centre", 800], ["Tey Maternity Specialist", 650], ["The London Medical Specialist Centre Sdn Bhd", 500], ["Thomson Hospitals Sdn Bhd (Tropicana MC)", 500], ["Timberland Medical Centre", 950], ["TMC Women's Specialist Holding SB (Ipoh)", 600], ["TMC Women's Specialist Holdings SB (PG)", 800], ["UiTM - Sg Buloh", 500], ["UiTM Private Healthcare Sdn Bhd", 500], ["UKM Specialist Centre", 500], ["UM Specialist Centre (UMSC)", 500], ["Universiti Kebangsaan Malaysia", 500], ["Universiti Malaysia Kelantan Veterinar Bachok", 850], ["Universiti Malaysia Sarawak", 800], ["Universiti Putra Malaysia", 500], ["Universiti Sains Malaysia - Penang", 800], ["Bentong Specialist Hospital", 850]];
 const IHH_GROUP = ["Pantai Hospital Ampang", "Pantai Hospital Ayer Keroh", "Pantai Hospital Batu Pahat", "Pantai Hospital Cheras", "Pantai Hospital Ipoh (Paloh Medical Centre Sdn Bhd)", "Pantai Hospital Klang", "Pantai Hospital Kuala Lumpur", "Pantai Hospital Laguna Merbok", "Pantai Hospital Manjung", "Pantai Hospital Penang", "Pantai Hospital Sungai Petani", "Gleneagles - Kota Kinabalu", "Gleneagles - Kuala Lumpur", "Gleneagles - Penang", "Gleneagles Medini", "Prince Court Medical Centre (PCMC)", "Island Hospital", "Timberland Medical Centre", "Sunmed Velocity Sdn Bhd"];
 const SUNWAY_GROUP = ["Sunway Medical Centre Ipoh", "Sunway Medical Centre Penang Sdn Bhd", "Sunway Medical Centre Sdn Bhd", "Sunway Specialist Centre Damansara"];
@@ -1067,6 +1119,7 @@ function generate(){
   window._lastWarrantyYears = warrantyYears;
   window._lastPpmYears = ppmYears;
 
+  saveRecord(false);
   document.getElementById('resultsWrap').scrollIntoView({behavior:'smooth'});
 }
 
@@ -1114,7 +1167,7 @@ function drawRemarks(doc, startY, isComprehensive, pageWidth, pageHeight){
   return y;
 }
 
-function exportReportPdf(title, rows, warrantyYears, ppmYears, isComprehensive, filename){
+function buildReportPdf(title, rows, warrantyYears, ppmYears, isComprehensive){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'landscape', unit:'pt', format:'a4'});
   const hospital = document.getElementById('fHospital').value;
@@ -1214,7 +1267,12 @@ function exportReportPdf(title, rows, warrantyYears, ppmYears, isComprehensive, 
     }
   }
 
-  doc.save(filename);
+  return doc;
+}
+
+function exportReportPdf(title, rows, warrantyYears, ppmYears, isComprehensive, filename){
+  buildReportPdf(title, rows, warrantyYears, ppmYears, isComprehensive).save(filename);
+  saveRecord(true); // keep the saved record's PDFs in sync with what was just exported
 }
 
 
@@ -1314,6 +1372,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function handleFile(file){
+  currentSourceFile = file; currentRecordId = null;
   const status = document.getElementById('uploadStatus');
   status.textContent = 'Reading PDF…';
   try{
@@ -1361,6 +1420,356 @@ async function handleFile(file){
   }
 }
 
+
+
+// ---------- RECORDS (IndexedDB) ----------
+let currentSourceFile = null;
+let currentRecordId = null;
+let recordsDb = null;
+let recordsFilter = '';
+
+function recOpenDb(){
+  return new Promise((resolve, reject)=>{
+    if (!window.indexedDB){ reject(new Error('IndexedDB not available')); return; }
+    const req = indexedDB.open('ummi-ppm-records', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('records', {keyPath:'id'}); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function recTx(mode){ return recordsDb.transaction('records', mode).objectStore('records'); }
+function recReq(r){ return new Promise((res, rej)=>{ r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function recGetAll(){ return recReq(recTx('readonly').getAll()); }
+function recGet(id){ return recReq(recTx('readonly').get(id)); }
+function recPut(rec){ return recReq(recTx('readwrite').put(rec)); }
+function recDelete(id){ return recReq(recTx('readwrite').delete(id)); }
+
+function recSumRows(rows){
+  let t = 0;
+  (rows||[]).forEach(r => Object.values(r.years||{}).forEach(v => { if (typeof v === 'number') t += v; }));
+  return t;
+}
+function recCollectSettings(){
+  const s = {};
+  document.querySelectorAll('#step2 [id], #step3 [id], #step4 [id], #step5 [id]').forEach(el=>{
+    if (!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || el.type === 'file') return;
+    s[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+  });
+  return s;
+}
+function recSetStatus(msg){
+  const el = document.getElementById('recSaveStatus');
+  if (el) el.textContent = msg;
+}
+
+async function saveRecord(isUpdateOnly){
+  if (!recordsDb){ recSetStatus('⚠️ Records storage unavailable in this browser — use the PDF export buttons.'); return; }
+  if (!window._lastNonCompRows) return;
+  if (isUpdateOnly && !currentRecordId) return;
+  try{
+    const wy = window._lastWarrantyYears, py = window._lastPpmYears;
+    const ncDoc = buildReportPdf('Non-Comprehensive PPM Costing', window._lastNonCompRows, wy, py, false);
+    const cDoc = buildReportPdf('Comprehensive PPM Costing', window._lastCompRows, wy, py, true);
+    let existing = currentRecordId ? await recGet(currentRecordId) : null;
+    const now = Date.now();
+    const rec = {
+      id: currentRecordId || ('r' + now + Math.random().toString(36).slice(2,6)),
+      createdAt: existing ? existing.createdAt : now,
+      savedAt: now,
+      hospital: document.getElementById('fHospital').value,
+      ref: document.getElementById('fQuoteRef').value,
+      quoteDate: document.getElementById('fDate').value,
+      submissionDate: document.getElementById('fSubmissionDate').value,
+      title: document.getElementById('fTitle').value,
+      company: document.getElementById('fCompanyName').value,
+      warrantyYears: wy, ppmYears: py,
+      settings: recCollectSettings(),
+      lineItems: JSON.parse(JSON.stringify(lineItems)),
+      totalNonComp: recSumRows(window._lastNonCompRows),
+      totalComp: recSumRows(window._lastCompRows),
+      nonCompPdf: ncDoc.output('blob'),
+      compPdf: cDoc.output('blob'),
+      quotePdf: currentSourceFile ? currentSourceFile : (existing ? existing.quotePdf : null),
+      quoteName: currentSourceFile ? currentSourceFile.name : (existing ? existing.quoteName : ''),
+      drive: existing ? existing.drive : undefined
+    };
+    await recPut(rec);
+    currentRecordId = rec.id;
+    recSetStatus('✓ Saved to Records · ' + new Date(now).toLocaleString());
+    await renderRecords();
+    if (driveEnabled()) driveSync(rec.id);
+  }catch(e){
+    console.error(e);
+    recSetStatus('⚠️ Could not save record: ' + e.message);
+  }
+}
+
+function recFileName(rec, kind){
+  const base = (rec.hospital || 'Hospital').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-').slice(0,50) || 'Hospital';
+  const ref = (rec.ref || '').replace(/[^\w\-]+/g,'');
+  return `${kind}-PPM-Costing_${base}${ref ? '_' + ref : ''}.pdf`;
+}
+function recDownloadBlob(blob, name){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+async function renderRecords(){
+  const box = document.getElementById('recList');
+  const count = document.getElementById('recCount');
+  const hdrCount = document.getElementById('recHdrCount');
+  if (!box || !recordsDb) return;
+  let all = await recGetAll();
+  all.sort((a,b)=> b.savedAt - a.savedAt);
+  if (count) count.textContent = all.length;
+  if (hdrCount) hdrCount.textContent = all.length;
+  const q = recordsFilter.trim().toLowerCase();
+  const list = !q ? all : all.filter(r => [r.hospital, r.ref, r.title, r.quoteName, r.company, new Date(r.savedAt).toLocaleDateString()].join(' ').toLowerCase().includes(q));
+  if (!list.length){
+    box.innerHTML = `<div class="hint" style="padding:6px 0;">${all.length ? 'No records match your search.' : 'No records yet. Every costing you generate is saved here automatically, together with its PDFs.'}</div>`;
+    return;
+  }
+  const rm = n => 'RM ' + Math.round(n).toLocaleString('en-MY');
+  box.innerHTML = `<div style="overflow-x:auto;"><table class="rec-table"><thead><tr>
+    <th>Saved</th><th>Hospital</th><th>Quotation ref</th><th>Warranty / PPM</th><th>Non-Comp total</th><th>Comp total</th><th>Files</th><th></th></tr></thead><tbody>` +
+    list.map(r => `<tr>
+      <td>${escapeHtml(new Date(r.savedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}))}</td>
+      <td><b>${escapeHtml(r.hospital||'—')}</b><div class="rec-sub">${escapeHtml(r.title||'')}</div></td>
+      <td>${escapeHtml(r.ref||'—')}</td>
+      <td>${r.warrantyYears} yr / ${r.ppmYears} yr</td>
+      <td>${rm(r.totalNonComp)}</td><td>${rm(r.totalComp)}</td>
+      <td class="rec-files">
+        ${(r.nonCompPdf || (r.drive && r.drive.nc)) ? `<a href="#" data-act="dl-nc" data-id="${r.id}">Non-Comp PDF</a>` : ''}
+        ${(r.compPdf || (r.drive && r.drive.c)) ? `<a href="#" data-act="dl-c" data-id="${r.id}">Comp PDF</a>` : ''}
+        ${(r.quotePdf || (r.drive && r.drive.q)) ? `<a href="#" data-act="dl-q" data-id="${r.id}">Quotation PDF</a>` : ''}
+        <div class="rec-drive ${r.drive && r.drive.folder ? 'ok' : (r.driveError ? 'err' : '')}">${r.drive && r.drive.folder ? `☁ <a href="${escapeHtml(r.drive.folder)}" target="_blank" rel="noopener" data-act="drive-folder">Google Drive ✓</a>` : (r.driveError ? '☁ Drive sync failed' : '💻 This computer only')}</div>
+      </td>
+      <td class="rec-actions">
+        <button class="btn btn-secondary" data-act="open" data-id="${r.id}">Reopen</button>
+        <button class="btn btn-secondary rec-del" data-act="del" data-id="${r.id}">Delete</button>
+      </td></tr>`).join('') + `</tbody></table></div>`;
+}
+
+async function recReopen(id){
+  const rec = await recGet(id);
+  if (!rec) return;
+  lineItems = JSON.parse(JSON.stringify(rec.lineItems));
+  currentRecordId = rec.id;
+  currentSourceFile = null; // keep the stored quotation PDF as is
+  ['step2','step3','step4','step5'].forEach(s => document.getElementById(s).style.display = 'block');
+  document.getElementById('generateRow').style.display = 'flex';
+  Object.entries(rec.settings || {}).forEach(([k,v])=>{
+    const el = document.getElementById(k);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+  });
+  document.getElementById('uploadStatus').innerHTML = `Reopened saved record: <b>${escapeHtml(rec.hospital)}</b> ${escapeHtml(rec.ref)}. Adjust anything and press Generate to update the record.`;
+  renderItemsTable();
+  generate();
+}
+
+function recBlobToDataUrl(blob){
+  return new Promise((res, rej)=>{ if(!blob){res(null);return;} const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(fr.error); fr.readAsDataURL(blob); });
+}
+async function recDataUrlToBlob(u){ if(!u) return null; return await (await fetch(u)).blob(); }
+
+async function recBackup(){
+  const all = await recGetAll();
+  if (!all.length){ alert('No records to back up yet.'); return; }
+  const out = [];
+  for (const r of all){
+    const c = Object.assign({}, r);
+    c.nonCompPdf = await recBlobToDataUrl(r.nonCompPdf);
+    c.compPdf = await recBlobToDataUrl(r.compPdf);
+    c.quotePdf = await recBlobToDataUrl(r.quotePdf);
+    out.push(c);
+  }
+  const blob = new Blob([JSON.stringify({app:'ummi-ppm-records', version:1, exportedAt:new Date().toISOString(), records:out})], {type:'application/json'});
+  recDownloadBlob(blob, 'PPM-Records-Backup_' + new Date().toISOString().slice(0,10) + '.json');
+}
+async function recRestore(file){
+  try{
+    const data = JSON.parse(await file.text());
+    if (data.app !== 'ummi-ppm-records' || !Array.isArray(data.records)) throw new Error('Not a PPM Records backup file');
+    let n = 0;
+    for (const r of data.records){
+      r.nonCompPdf = await recDataUrlToBlob(r.nonCompPdf);
+      r.compPdf = await recDataUrlToBlob(r.compPdf);
+      r.quotePdf = await recDataUrlToBlob(r.quotePdf);
+      if (r.quotePdf && r.quoteName) r.quotePdf = new File([r.quotePdf], r.quoteName, {type:'application/pdf'});
+      await recPut(r); n++;
+    }
+    await renderRecords();
+    recSetStatus(`✓ Restored ${n} record(s) from backup.`);
+  }catch(e){ alert('Could not restore: ' + e.message); }
+}
+
+async function initRecords(){
+  try{
+    recordsDb = await recOpenDb();
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+    await renderRecords();
+  }catch(e){
+    console.warn(e);
+    recSetStatus('⚠️ Records storage is unavailable in this browser (private mode or blocked). Exporting PDFs still works.');
+  }
+  document.getElementById('recSearch').addEventListener('input', e => { recordsFilter = e.target.value; renderRecords(); });
+  document.getElementById('recBackup').addEventListener('click', recBackup);
+  document.getElementById('recRestoreInput').addEventListener('change', e => { if (e.target.files[0]) recRestore(e.target.files[0]); e.target.value=''; });
+  document.getElementById('recList').addEventListener('click', async e => {
+    const t = e.target.closest('[data-act]'); if (!t) return;
+    e.preventDefault();
+    const id = t.dataset.id, act = t.dataset.act;
+    const rec = await recGet(id); if (!rec) return;
+    if (act === 'drive-folder'){ window.open(rec.drive.folder, '_blank', 'noopener'); }
+    else if (act === 'dl-nc'){ if (rec.nonCompPdf) recDownloadBlob(rec.nonCompPdf, recFileName(rec,'Non-Comprehensive')); else window.open(rec.drive.nc, '_blank', 'noopener'); }
+    else if (act === 'dl-c'){ if (rec.compPdf) recDownloadBlob(rec.compPdf, recFileName(rec,'Comprehensive')); else window.open(rec.drive.c, '_blank', 'noopener'); }
+    else if (act === 'dl-q'){ if (rec.quotePdf) recDownloadBlob(rec.quotePdf, rec.quoteName || 'Quotation.pdf'); else window.open(rec.drive.q, '_blank', 'noopener'); }
+    else if (act === 'open') recReopen(id);
+    else if (act === 'del'){
+      if (confirm(`Delete the record for ${rec.hospital || 'this hospital'} ${rec.ref || ''} and its PDFs? This cannot be undone.`)){
+        if (rec.drive && rec.drive.folder && driveEnabled() && confirm('This record is also in your Google Drive. Move its Drive folder to the trash and remove its row from the Google Sheet too?')){
+          const r = await driveCall('delete', {id});
+          if (!r.ok) alert('Could not delete from Google Drive: ' + r.error + '\nThe local record will still be deleted.');
+        }
+        await recDelete(id);
+        if (currentRecordId === id) currentRecordId = null;
+        renderRecords();
+      }
+    }
+  });
+  initDriveUi();
+  document.getElementById('recHdrBtn').addEventListener('click', ()=> document.getElementById('recordsSection').scrollIntoView({behavior:'smooth'}));
+}
+document.addEventListener('DOMContentLoaded', initRecords);
+
+
+// ---------- GOOGLE DRIVE SYNC (via Apps Script web app) ----------
+function lsGet(k){ try{ return localStorage.getItem(k) || ''; }catch(e){ return ''; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+// ===== SET ONCE: paste your Apps Script Web app URL (ends with /exec) between the quotes =====
+const DEFAULT_DRIVE_URL = 'https://script.google.com/macros/s/AKfycbyFDkODrJWcxFBPs2ItTz-UDQt1JsgC0gQ2jmuh6DiKcAIEk931xwxQ6nRuEixireayKQ/exec';
+const DEFAULT_DRIVE_PASSCODE = '';
+const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1nUnmW0d1XXUXHPrbCbOcct033JyTCz12myE6Tly2NMo/edit?gid=0#gid=0';
+// =============================================================================================
+function driveUrl(){ return (lsGet('ppmDriveUrl') || DEFAULT_DRIVE_URL || '').trim(); }
+function drivePasscode(){ return lsGet('ppmDriveSecret') || DEFAULT_DRIVE_PASSCODE || ''; }
+function driveEnabled(){ return /^https:\/\/script\.google(usercontent)?\.com\//.test(driveUrl()); }
+function driveStatus(msg, isErr){
+  const el = document.getElementById('driveStatus');
+  if (!el) return; el.textContent = msg; el.style.color = isErr ? '#b3261e' : '';
+}
+async function driveCall(action, payload){
+  try{
+    const res = await fetch(driveUrl(), {
+      method:'POST', redirect:'follow',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},   // avoids a CORS preflight, which Apps Script doesn't answer
+      body: JSON.stringify(Object.assign({action, secret: drivePasscode()}, payload || {}))
+    });
+    const txt = await res.text();
+    try{ return JSON.parse(txt); }
+    catch(e){ return {ok:false, error:'The URL did not answer like the PPM script. Check it is the Web app URL (ending /exec) and access is set to "Anyone".'}; }
+  }catch(e){
+    return {ok:false, error:'Could not get an answer from your Apps Script (' + e.message + '). Open the URL in a new browser tab: it should show {"ok":true,...}. If you see a Google sign-in or error page instead, redeploy the script (Deploy > Manage deployments > Edit > New version) with Execute as = Me and Who has access = Anyone, then paste the new /exec URL here.'};
+  }
+}
+function recBlobB64(blob){
+  return recBlobToDataUrl(blob).then(u => u ? u.slice(u.indexOf(',')+1) : null);
+}
+
+let driveQueue = Promise.resolve();
+function driveSync(id){
+  driveQueue = driveQueue.then(()=>driveSyncOne(id)).catch(e=>console.error(e));
+  return driveQueue;
+}
+async function driveSyncOne(id){
+  const rec = await recGet(id);
+  if (!rec) return;
+  driveStatus('☁ Saving to Google Drive…');
+  const hasQ = rec.quotePdf && !(rec.drive && rec.drive.q);
+  const files = {};
+  if (rec.nonCompPdf) files.nonComp = {name: recFileName(rec,'Non-Comprehensive'), b64: await recBlobB64(rec.nonCompPdf)};
+  if (rec.compPdf)    files.comp    = {name: recFileName(rec,'Comprehensive'), b64: await recBlobB64(rec.compPdf)};
+  if (hasQ)           files.quote   = {name: rec.quoteName || 'Quotation.pdf', b64: await recBlobB64(rec.quotePdf)};
+  const r = await driveCall('save', {record:{
+    id: rec.id, createdAt: rec.createdAt, savedAt: rec.savedAt, hospital: rec.hospital, ref: rec.ref, title: rec.title,
+    quoteDate: rec.quoteDate, submissionDate: rec.submissionDate, company: rec.company,
+    warrantyYears: rec.warrantyYears, ppmYears: rec.ppmYears, totalNonComp: rec.totalNonComp, totalComp: rec.totalComp,
+    settings: rec.settings, lineItems: rec.lineItems, quoteName: rec.quoteName, files
+  }});
+  const latest = (await recGet(id)) || rec;
+  if (r.ok){
+    latest.drive = r.drive; delete latest.driveError;
+    await recPut(latest);
+    driveStatus('✓ Saved to Google Drive · ' + new Date().toLocaleString());
+  } else {
+    latest.driveError = r.error;
+    await recPut(latest);
+    driveStatus('⚠️ Saved on this computer, but Google Drive failed: ' + r.error, true);
+  }
+  renderRecords();
+}
+async function driveSyncAll(){
+  if (!driveEnabled()){ driveStatus('Enter and save the Google Drive URL first.', true); return; }
+  const all = await recGetAll();
+  const todo = all.filter(r => !(r.drive && r.drive.folder));
+  if (!todo.length){ driveStatus('✓ Everything is already in Google Drive.'); return; }
+  for (let i=0;i<todo.length;i++){
+    driveStatus(`☁ Uploading ${i+1} of ${todo.length}…`);
+    await driveSync(todo[i].id);
+  }
+  const left = (await recGetAll()).filter(r => !(r.drive && r.drive.folder)).length;
+  driveStatus(left ? `⚠️ ${left} record(s) failed to upload — see the red label in the list.` : `✓ Uploaded ${todo.length} record(s) to Google Drive.`, !!left);
+}
+async function driveLoad(){
+  if (!driveEnabled()){ driveStatus('Enter and save the Google Drive URL first.', true); return; }
+  driveStatus('☁ Loading records from Google Drive…');
+  const r = await driveCall('list');
+  if (!r.ok){ driveStatus('⚠️ ' + r.error, true); return; }
+  let added = 0, linked = 0;
+  for (const d of r.records){
+    const local = await recGet(d.id);
+    if (local){
+      if (!(local.drive && local.drive.folder)){ local.drive = d.drive; delete local.driveError; await recPut(local); linked++; }
+      continue;
+    }
+    await recPut({
+      id: d.id, createdAt: d.createdAt || Date.now(), savedAt: d.savedAt || Date.now(),
+      hospital: d.hospital, ref: d.ref, quoteDate: d.quoteDate, submissionDate: d.submissionDate, title: d.title, company: d.company,
+      warrantyYears: d.warrantyYears, ppmYears: d.ppmYears, settings: d.settings || {}, lineItems: d.lineItems || [],
+      totalNonComp: d.totalNonComp, totalComp: d.totalComp, nonCompPdf: null, compPdf: null, quotePdf: null,
+      quoteName: d.quoteName || '', drive: d.drive
+    });
+    added++;
+  }
+  await renderRecords();
+  driveStatus(`✓ Loaded from Google Drive: ${added} new record(s)` + (linked ? `, ${linked} linked` : '') + '.');
+}
+function initDriveUi(){
+  const urlEl = document.getElementById('driveUrl'), secEl = document.getElementById('driveSecret');
+  urlEl.value = driveUrl(); secEl.value = drivePasscode();
+  document.getElementById('driveLinks').innerHTML = `<a href="${escapeHtml(GOOGLE_SHEET_URL)}" target="_blank" rel="noopener">Open Google Sheet</a>`;
+  if (DEFAULT_DRIVE_URL && !lsGet('ppmDriveUrl')) driveStatus('Google Drive sync is pre-configured.');
+  const refreshBadge = ()=>{ document.getElementById('driveBadge').textContent = driveEnabled() ? 'ON' : 'OFF'; document.getElementById('driveBadge').className = 'drive-badge ' + (driveEnabled() ? 'on' : ''); };
+  refreshBadge();
+  document.getElementById('driveSaveBtn').addEventListener('click', async ()=>{
+    lsSet('ppmDriveUrl', urlEl.value.trim()); lsSet('ppmDriveSecret', secEl.value);
+    refreshBadge();
+    if (!urlEl.value.trim()){ driveStatus('Google Drive sync is off.'); return; }
+    if (!driveEnabled()){ driveStatus('That does not look like a Google Apps Script URL (it should start with https://script.google.com/macros/s/… and end with /exec).', true); return; }
+    driveStatus('Testing connection…');
+    const r = await driveCall('ping');
+    if (r.ok){
+      driveStatus('✓ Connected. New costings will be saved to Google Drive automatically.');
+      const lk = document.getElementById('driveLinks');
+      lk.innerHTML = `<a href="${escapeHtml(r.folderUrl)}" target="_blank" rel="noopener">Open Drive folder</a> · <a href="${escapeHtml(GOOGLE_SHEET_URL)}" target="_blank" rel="noopener">Open Google Sheet</a>`;
+    } else driveStatus('⚠️ ' + r.error, true);
+  });
+  document.getElementById('driveSyncAll').addEventListener('click', driveSyncAll);
+  document.getElementById('driveLoad').addEventListener('click', driveLoad);
+}
 </script>
 </body>
 </html>
