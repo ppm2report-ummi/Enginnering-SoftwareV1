@@ -1785,7 +1785,7 @@
       const m = line.match(itemStartRe);
       if(m){
         if(current) items.push(current);
-        current = { no:m[1], model:m[2].trim(), desc:m[3].trim(), qty:m[4], batch:'', serial:'' };
+        current = { no:m[1], model:m[2].trim(), desc:m[3].trim(), qty:m[4], batch:'', serial:'', serials:[], batches:[] };
         return;
       }
       if(!current) return;
@@ -1799,8 +1799,13 @@
       if(/^Serial No\.?/i.test(line) && /Batch/i.test(line)) return;
       const dataMatch = line.match(/^([A-Za-z0-9\-\/]+)(?:\s+([A-Za-z0-9\-\/]+))?(?:\s+(\d{2}\/\d{2}\/\d{4}))?\s+([\d]+\.\d{3})$/);
       if(dataMatch){
-        current.serial = dataMatch[1] || '';
-        current.batch = dataMatch[2] || '';
+        // A qty-2+ item lists one Serial No./Batch line per unit — collect
+        // every one instead of letting each new line overwrite the last, so
+        // all serials for the item survive (displayed one per row later).
+        if(dataMatch[1]) current.serials.push(dataMatch[1]);
+        if(dataMatch[2]) current.batches.push(dataMatch[2]);
+        current.serial = current.serials.join(', ');
+        current.batch = current.batches.join(', ');
         return;
       }
       current.desc += ' ' + line;
