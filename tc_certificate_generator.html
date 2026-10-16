@@ -619,7 +619,7 @@
         </tr>
         <tr>
           <td class="lbl">Contact Person:</td>
-          <td colspan="2" id="p_contactPerson" contenteditable="true" data-sync="contactPerson"></td>
+          <td colspan="2" id="p_contactPerson" style="white-space:pre-line;" contenteditable="true" data-sync="contactPerson" data-multiline="1"></td>
           <td class="lbl">Fax No. :</td>
           <td colspan="2" id="p_fax" contenteditable="true" data-sync="fax"></td>
         </tr>
@@ -936,7 +936,11 @@
     document.getElementById('p_fax').textContent = val('fax');
     document.getElementById('p_department').textContent = val('department');
     document.getElementById('p_venue').textContent = val('venue');
-    document.getElementById('p_contactPerson').textContent = val('contactPerson');
+    // Multiple contact names (comma-separated, e.g. a second contact for a
+    // different department) each go on their own line instead of running
+    // together or wrapping mid-name.
+    document.getElementById('p_contactPerson').textContent =
+      val('contactPerson').split(',').map(s=>s.trim()).filter(Boolean).join('\n');
     document.getElementById('p_equipmentGroup').textContent = val('equipmentGroup');
     document.getElementById('p_manufacturer').textContent = val('manufacturer');
     document.getElementById('p_installDate').textContent = fmtDate(val('installDate'));
@@ -1176,10 +1180,21 @@
     return localStorage.getItem(LOCAL_URL_KEY) || DEFAULT_API_URL || '';
   }
 
+  // GET requests to the Apps Script URL must never be served from the
+  // browser's HTTP cache: the exact same "?action=getByRef&ref=0007-26" URL
+  // gets requested again every time that ref is loaded, and without this a
+  // cached response (or a proxy/extension that ignores query strings) can
+  // silently hand back a stale or even a different ref's data instead of
+  // asking the Sheet again. The _ts cache-buster plus cache:'no-store'
+  // closes that off completely.
+  function noCacheUrl_(url){
+    return url + (url.includes('?') ? '&' : '?') + '_ts=' + Date.now();
+  }
+
   async function apiGetNextRef(year){
     const url = getApiUrl();
     if(!url) throw new Error('no-url');
-    const res = await fetch(url + '?action=nextRef&year=' + encodeURIComponent(year));
+    const res = await fetch(noCacheUrl_(url + '?action=nextRef&year=' + encodeURIComponent(year)), {cache:'no-store'});
     const data = await res.json();
     if(!data.ok) throw new Error(data.error || 'API error');
     return data;
@@ -1188,7 +1203,7 @@
   async function apiGetEquipment(){
     const url = getApiUrl();
     if(!url) throw new Error('no-url');
-    const res = await fetch(url + '?action=getEquipment');
+    const res = await fetch(noCacheUrl_(url + '?action=getEquipment'), {cache:'no-store'});
     const data = await res.json();
     if(!data.ok) throw new Error(data.error || 'API error');
     return data.equipment || [];
@@ -1197,7 +1212,7 @@
   async function apiGetByRef(ref){
     const url = getApiUrl();
     if(!url) throw new Error('no-url');
-    const res = await fetch(url + '?action=getByRef&ref=' + encodeURIComponent(ref));
+    const res = await fetch(noCacheUrl_(url + '?action=getByRef&ref=' + encodeURIComponent(ref)), {cache:'no-store'});
     const data = await res.json();
     if(!data.ok) throw new Error(data.error || 'API error');
     return data;
@@ -1561,6 +1576,22 @@
     statusEl.textContent = 'Loading ' + ref + '…';
     try{
       const res = await apiGetByRef(ref);
+
+      // The Log sheet's plain "Hospital" column and the hospital buried in
+      // the "Full Data (JSON)" column must agree. If they don't, this row's
+      // JSON got desynced from its own Ref No (usually because a sort in
+      // the Sheet moved some columns but not the JSON column). Refuse to
+      // load mismatched data into the form rather than silently editing on
+      // top of the wrong certificate.
+      if(res.mismatch){
+        statusEl.innerHTML = '⚠️ Not loaded — the Log sheet row for <b>' + escapeHtml(ref) + '</b> looks misaligned. ' +
+          'Its Hospital column says "' + escapeHtml(res.sheetHospital || '') + '" but the saved form data is for a different hospital ("' +
+          escapeHtml((res.data && res.data.fields && res.data.fields.hospital) || '') + '"). ' +
+          'This usually means the "Full Data (JSON)" column got out of sync with the rest of that row during a sort. ' +
+          'Fix the Log sheet (realign that row\'s JSON column) before editing this ref.';
+        return;
+      }
+
       populateFormFromData(res.data);
       editMode = true;
       issuedRef = res.ref;
@@ -1570,7 +1601,17 @@
       document.getElementById('statusPill').style.background = '#f5e3b3';
       document.getElementById('printBtn').textContent = 'Save Changes & Print / PDF';
       render();
-      statusEl.textContent = 'Loaded ' + ref + '. Make your changes, then click "Save Changes" below.';
+      // Show what actually came back — hospital + a direct link to the PDF
+      // already saved under this ref — so a wrong match is obvious at a
+      // glance, before you start editing on top of it.
+      const loadedHospital = (res.data && res.data.fields && res.data.fields.hospital) || '(no hospital on file)';
+      let checkHtml = 'Loaded <b>' + ref + '</b> — ' + escapeHtml(loadedHospital) + '.';
+      if(res.pdfUrl){
+        checkHtml += ' <a href="' + res.pdfUrl + '" target="_blank">Open the saved PDF to confirm this is the right one</a> before editing.';
+      } else {
+        checkHtml += ' (No saved PDF on file to cross-check against.)';
+      }
+      statusEl.innerHTML = checkHtml;
       setStatus('Loaded certificate ' + ref + ' for editing.');
     }catch(e){
       statusEl.textContent = 'Could not load ' + ref + ': ' + e.message;
