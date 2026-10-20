@@ -1445,7 +1445,9 @@
         ctx.drawImage(canvas, 0, i*pageHeightPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
 
         if(pagesAdded > 0) doc.addPage([pageWidthMm, pageHeightMm], 'portrait');
-        doc.addImage(pageCanvas.toDataURL('image/png'), 'PNG', 0, 0, pageWidthMm, sliceHeightPx / pxPerMm);
+        // JPEG (not PNG): the page is already flattened onto white, and PNG made
+        // each page ~10 MB. JPEG at 0.9 keeps text crisp at roughly 1/40 the size.
+        doc.addImage(pageCanvas.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, pageWidthMm, sliceHeightPx / pxPerMm, undefined, 'FAST');
         pagesAdded++;
       }
     }
