@@ -1154,7 +1154,29 @@
   function renderChecklists(){
     const container = document.getElementById('checklistsContainer');
     const items = collectItems().filter(it => it.checklist && ((it.model||'').trim() || (it.desc||'').trim()));
-    container.innerHTML = items.map((it,idx)=> checklistPageHtml(it, idx+1)).join('');
+
+    // One checklist per physical UNIT, not per item row: an item with Qty 2
+    // gets 2 checklist pages. If the Batch/Lot field lists one serial per
+    // unit (comma / line separated), each page shows its own serial; if
+    // there are fewer serials than units (e.g. one batch code for qty 2),
+    // every page shows the full Batch/Lot text.
+    const pages = [];
+    items.forEach(it=>{
+      const qtyNum = Math.max(1, Math.min(100, Math.round(parseFloat(it.qty) || 1)));
+      const serials = (it.batch || '').split(/[,\n]/).map(s=>s.trim()).filter(Boolean);
+      for(let u=0; u<qtyNum; u++){
+        // The number of checklists always follows Qty. Serials are matched to
+        // units only when they divide evenly (2 serials/qty 2 -> 1 each;
+        // 4 serials/qty 2 -> 2 each); otherwise every page shows the full text.
+        let perUnitSerial = it.batch;
+        if(qtyNum > 1 && serials.length >= qtyNum && serials.length % qtyNum === 0){
+          const per = serials.length / qtyNum;
+          perUnitSerial = serials.slice(u*per, (u+1)*per).join(', ');
+        }
+        pages.push(Object.assign({}, it, { batch: perUnitSerial }));
+      }
+    });
+    container.innerHTML = pages.map((it,idx)=> checklistPageHtml(it, idx+1)).join('');
   }
 
   function escapeHtml(s){
@@ -1717,6 +1739,12 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
+  // "43260015,02260017" (serial + second number) is shown as "43260015(02260017)"
+  // so the comma stays free to separate one unit's serial from the next.
+  function formatSerials(arr){
+    return arr.map(x => x.replace(/^([^,]+),(.+)$/, '$1($2)')).join(', ');
+  }
+
   function parseDOLines(lines){
     const joinedAll = lines.join('\n');
     const get = (re) => { const m = joinedAll.match(re); return m ? m[1].trim() : ''; };
@@ -1797,17 +1825,29 @@
 
       if(/^MDA No\.?/i.test(line)) return;
       if(/^Serial No\.?/i.test(line) && /Batch/i.test(line)) return;
-      const dataMatch = line.match(/^([A-Za-z0-9\-\/]+)(?:\s+([A-Za-z0-9\-\/]+))?(?:\s+(\d{2}\/\d{2}\/\d{4}))?\s+([\d]+\.\d{3})$/);
+      // Serial tokens may contain a comma (e.g. "43260015,02260017" = serial +
+      // second number), so the comma is allowed in the first token.
+      const dataMatch = line.match(/^([A-Za-z0-9\-\/,]+)(?:\s+([A-Za-z0-9\-\/]+))?(?:\s+(\d{2}\/\d{2}\/\d{4}))?\s+([\d]+\.\d{3})$/);
       if(dataMatch){
         // A qty-2+ item lists one Serial No./Batch line per unit — collect
-        // every one instead of letting each new line overwrite the last, so
-        // all serials for the item survive (displayed one per row later).
+        // every one instead of letting each new line overwrite the last.
         if(dataMatch[1]) current.serials.push(dataMatch[1]);
         if(dataMatch[2]) current.batches.push(dataMatch[2]);
-        current.serial = current.serials.join(', ');
+        current.lastWasSerial = !!dataMatch[1];
+        current.serial = formatSerials(current.serials);
         current.batch = current.batches.join(', ');
         return;
       }
+      // A long serial can wrap in the DO's narrow column, leaving its last few
+      // characters alone on the next line ("43260015,0226001" / "7"). Glue
+      // that tail back onto the serial it belongs to.
+      if(current.lastWasSerial && current.serials.length && /^[A-Za-z0-9]{1,4}$/.test(line)){
+        current.serials[current.serials.length-1] += line;
+        current.lastWasSerial = false;
+        current.serial = formatSerials(current.serials);
+        return;
+      }
+      current.lastWasSerial = false;
       current.desc += ' ' + line;
     });
     if(current) items.push(current);
