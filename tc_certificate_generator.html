@@ -787,6 +787,8 @@
     const warrantySelects = Array.from(document.querySelectorAll('#itemsBody .i-warranty'));
     const has1plus1 = warrantySelects.some(sel => sel.value === '1+1 YEAR');
     const has1plus2 = warrantySelects.some(sel => sel.value === '1+2 YEAR');
+    const has1plus3 = warrantySelects.some(sel => sel.value === '1+3 YEAR');
+    const has1plus4 = warrantySelects.some(sel => sel.value === '1+4 YEAR');
     const lines = [ fmtDate(shiftDateISO(startIso, 1)) + ' for 1 Year Warranty Items' ];
     if(has1plus1){
       lines.push(fmtDate(shiftDateISO(startIso, 2)) + ' for 1+1 Years Warranty Item');
@@ -794,13 +796,19 @@
     if(has1plus2){
       lines.push(fmtDate(shiftDateISO(startIso, 3)) + ' for 1+2 Years Warranty Item');
     }
+    if(has1plus3){
+      lines.push(fmtDate(shiftDateISO(startIso, 4)) + ' for 1+3 Years Warranty Item');
+    }
+    if(has1plus4){
+      lines.push(fmtDate(shiftDateISO(startIso, 5)) + ' for 1+4 Years Warranty Item');
+    }
     const computed = lines.join('\n');
     field.value = computed;
     lastAutoWarrantyEnd = computed;
   }
 
   function warrantyOptionsHtml(selected){
-    const opts = ['1 YEAR','1+1 YEAR','1+2 YEAR'];
+    const opts = ['1 YEAR','1+1 YEAR','1+2 YEAR','1+3 YEAR','1+4 YEAR'];
     const sel = opts.includes(selected) ? selected : '1 YEAR';
     return opts.map(o=>`<option value="${o}"${o===sel?' selected':''}>${o}</option>`).join('');
   }
