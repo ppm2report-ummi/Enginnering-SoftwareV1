@@ -871,6 +871,10 @@ function onItemFieldChange(e){
     // rebuild the input and drop focus after every keystroke
     const tr = e.target.closest('tr');
     const master = findModel(val);
+    if (master && tr){
+      lineItems[i].desc = master[1];
+      const dIn = tr.querySelector('input[data-field="desc"]'); if (dIn) dIn.value = master[1];
+    }
     if (tr && tr.children[4]){
       tr.children[4].innerHTML = master
         ? `<span class="badge matched">MATCHED</span> <span class="badge ${master[2]==='FOC'?'foc':'charge'}">${master[2]}</span>`
@@ -1097,7 +1101,7 @@ function generate(){
 
   lineItems.forEach(item=>{
     const master = findModel(item.code);
-    const displayDesc = master ? master[1] : (item.desc || item.code); // prefer the Data Entry PPM Costing master description over the quotation's own wording
+    const displayDesc = item.desc || (master ? master[1] : item.code); // review table already holds the master description for matched codes (quotation wording otherwise); a manual edit there is respected
 
     let years = computeNonComp(item, baseHospitalPrice, isIHH, isSunway, frequency, ppmYears, warrantyYears);
     if (averageYears) years = averageAcrossYears(years, ppmYears);
@@ -1397,8 +1401,9 @@ async function handleFile(file){
     document.getElementById('fTitle').value = meta.title || '';
     document.getElementById('fHospital').dispatchEvent(new Event('input'));
 
+    // matched codes take the master-list (Data Entry PPM Costing) description; unmatched keep the quotation's own
     lineItems = items.map(it => ({
-      code: it.code, desc: it.desc, qty: it.qty, unitPrice: it.unitPrice,
+      code: it.code, desc: (findModel(it.code) ? findModel(it.code)[1] : it.desc), qty: it.qty, unitPrice: it.unitPrice,
       status: (findModel(it.code) ? findModel(it.code)[2] : 'Charge')
     }));
 
